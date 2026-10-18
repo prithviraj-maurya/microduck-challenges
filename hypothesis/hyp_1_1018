@@ -1,0 +1,110 @@
+## Next hypothesis: strengthen speed tracking slightly
+
+The seed 2 control run finished 5/5. Its best checkpoint scored **5.048 s at 0.55 m/s**, close to your earlier policy’s 5.116 s, but slower than the 4.892 s reference. I’d test one change: raise `forward_reward` from **2.0 to 2.5**. The idea is to encourage the policy to follow faster commands; the risk is that it may sacrifice stability.
+
+Keep seed 2 for this comparison. It matches the control run’s seed, though training can still vary between runs.
+
+## Follow the guide for this run
+
+### 1. Check your working tree first
+
+The repo currently has changes in `.gitignore`, `docs/`, and `plan/`. Review those before starting:
+
+```bash
+git status --short
+git diff -- .gitignore
+```
+
+Keep your existing work safe. The training change should get its own commit, and the guide’s `publish` workflow needs a clean working tree when you export the policy.
+
+### 2. Make one change
+
+In `src/microduck_challenges/sprint_2m/challenge.toml`, change only:
+
+```toml
+[params.forward_reward]
+value = 2.5
+```
+
+Leave `upright_reward`, `step_reward`, and the recipe unchanged.
+
+### 3. Run the tests and smoke test
+
+```bash
+uv run --group workshop pytest
+```
+
+Then run the short CPU smoke test from `AGENTS.md`:
+
+```bash
+uv run train Mjlab-Sprint2m-MicroDuck --gpu-ids None --env.scene.num-envs 2 \
+  --agent.max-iterations 2 --agent.logger tensorboard --agent.run-name smoke-forward25
+```
+
+Confirm it finishes without errors. Remove only the smoke run’s generated folder afterward, as the guide directs.
+
+### 4. Commit the hypothesis
+
+Use a commit message that records the claim being tested:
+
+```bash
+git add src/microduck_challenges/sprint_2m/challenge.toml
+git commit -m "Sprint 2m: raise forward tracking reward from 2.0 to 2.5"
+```
+
+Before launching, make sure the working tree is clean and that the commit contains only this experiment’s change.
+
+### 5. Launch the Hugging Face Job
+
+The run name and checkpoint repo should identify the change and seed:
+
+```bash
+uv run train Mjlab-Sprint2m-MicroDuck \
+  --env.scene.num-envs 4096 \
+  --agent.max-iterations 3000 \
+  --agent.seed 2 \
+  --agent.logger tensorboard \
+  --agent.run-name forward25-seed2 \
+  --hf-jobs --no-wandb \
+  --namespace prithviraj-maurya \
+  --ckpt-repo prithviraj-maurya/mjlab-sprint2m-microduck-forward25-seed2
+```
+
+Your total experiment budget is $5. Before launching, check the completed job’s actual charge and your remaining budget. The previous job’s three-hour cap was a maximum of about $2.40 at the guide’s listed rate, but that does not tell us its exact cost.
+
+### 6. Track the run
+
+Record the job ID printed by the command. Check its state and download its checkpoints using the guide’s commands:
+
+```bash
+uv run hf jobs inspect <job-id> --namespace prithviraj-maurya
+uv run hf download prithviraj-maurya/mjlab-sprint2m-microduck-forward25-seed2 \
+  --local-dir logs/rsl_rl
+```
+
+Check progress and curves about once per checkpoint, rather than repeatedly:
+
+```bash
+grep -o "Learning iteration [0-9]*/[0-9]*" logs/forward25-seed2.log | tail -1
+```
+
+For the curves, use the TensorBoard event file under the downloaded run folder and the guide’s command. Look at `Train/mean_episode_length`, `Episode_Termination/fell_over`, and `Episode_Reward/track_linear_velocity`.
+
+### 7. Judge every checkpoint
+
+The curves tell you what training did; **the Arena evaluator tells you whether the policy got faster**. Use the workshop if it is open, or follow the checkpoint-scoring loop in `AGENTS.md` to score checkpoints 250 through 2999. Record each checkpoint’s score, finishes, and command speed.
+
+Compare the best result with:
+
+- This seed 2 control: **5.048 s, 5/5, 0.55 m/s**
+- Your earlier policy: **5.116 s, 5/5, 0.55 m/s**
+- Reference: **4.892 s, 5/5, 0.55 m/s**
+
+## How to learn from the result
+
+- **Faster evaluator score, still 5/5:** evidence the stronger tracking reward helped this run. A single run is promising, but not enough to establish a reliable improvement.
+- **Higher tracking reward in TensorBoard, same or slower evaluator score:** the policy learned to optimize that training signal, but the change did not improve sprint performance. Reward curves are not the competition score.
+- **Fewer than 5 finishes or much worse score:** the extra speed pressure may have hurt stability. Note which checkpoints and command speeds failed.
+- **A sharp curve drop around a curriculum change:** check whether the evaluator score also worsened there; that helps distinguish a training transition from a useful checkpoint.
+
+Write down the hypothesis, commit hash, seed, best checkpoint, evaluator score, finishes, command speed, and what the curves showed. Then decide whether to keep the change as a useful finding or try the next single-variable hypothesis. Do not publish or enter a policy without explicit approval.

@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Microduck Sprint — RL Training Visual Guide</title>
+  <style>
+    :root {
+      --ink: #17212b;
+      --muted: #566575;
+      --paper: #f5f7f8;
+      --card: #fff;
+      --line: #dce4e8;
+      --blue: #2268dc;
+      --blue-soft: #e9f1ff;
+      --green: #13815d;
+      --green-soft: #e8f7f0;
+      --red: #c64747;
+      --red-soft: #fff0ed;
+      --gold: #bb7a09;
+      --gold-soft: #fff5dd;
+      --shadow: 0 14px 38px #192b3a0c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    a { color: #155bc4; }
+    .hero {
+      padding: 64px 24px 48px;
+      color: white;
+      background:
+        radial-gradient(ellipse at 90% 0%, #55aaff66, transparent 36%),
+        linear-gradient(125deg, #10243c, #183b63 62%, #116e77);
+    }
+    .hero-inner, main, footer { width: min(1120px, calc(100% - 36px)); margin: auto; }
+    .eyebrow { font-size: .78rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; opacity: .76; }
+    h1 { max-width: 780px; margin: 10px 0 14px; font-size: clamp(2.2rem, 5vw, 4rem); line-height: 1.06; letter-spacing: -.045em; }
+    .hero p { max-width: 760px; margin: 0; color: #e1efff; font-size: 1.1rem; }
+    .hero-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 30px; }
+    .hero-stat { padding: 14px 16px; border: 1px solid #ffffff2a; border-radius: 13px; background: #ffffff10; }
+    .hero-stat strong { display: block; font-size: 1.45rem; }
+    .hero-stat span { display: block; color: #d9e8f7; font-size: .82rem; }
+    main { padding: 26px 0 64px; }
+    section { margin: 22px 0; }
+    .card { padding: clamp(20px, 3vw, 30px); border: 1px solid var(--line); border-radius: 19px; background: var(--card); box-shadow: var(--shadow); }
+    .manual-nav { position: sticky; z-index: 5; top: 0; display: flex; gap: 8px; overflow-x: auto; padding: 10px max(18px, calc((100vw - 1120px)/2)); border-bottom: 1px solid #dce4e8cc; background: #f5f7f8ed; backdrop-filter: blur(12px); }
+    .manual-nav a { flex: 0 0 auto; padding: 6px 10px; border-radius: 8px; color: #36516a; font-size: .78rem; font-weight: 750; text-decoration: none; }
+    .manual-nav a:hover { background: var(--blue-soft); color: #155bc4; }
+    .manual-nav + main { padding-top: 8px; }
+    section[id] { scroll-margin-top: 72px; }
+    h2 { margin: 0 0 7px; font-size: clamp(1.45rem, 3vw, 2rem); line-height: 1.2; letter-spacing: -.025em; }
+    h3 { margin: 0 0 8px; font-size: 1.04rem; }
+    p { margin: 9px 0; }
+    .lede { max-width: 820px; color: var(--muted); }
+    .small, .caption { color: var(--muted); font-size: .87rem; }
+    .tag { display: inline-flex; align-items: center; padding: 4px 9px; border-radius: 99px; background: var(--blue-soft); color: #144f9b; font-size: .76rem; font-weight: 750; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 13px; }
+    .spec { min-height: 140px; padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: linear-gradient(150deg,#fff,#f7fafc); }
+    .spec-icon { display: grid; width: 42px; height: 42px; place-items: center; margin-bottom: 10px; border-radius: 12px; background: var(--blue-soft); color: var(--blue); font-size: 1.35rem; }
+    .spec-number { display: block; margin-bottom: 2px; font-size: 1.45rem; font-weight: 850; line-height: 1.2; letter-spacing: -.03em; }
+    .loop-step { position: relative; min-height: 125px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; }
+    .loop-step:not(:last-child)::after { content: "→"; position: absolute; z-index: 2; top: 40%; right: -19px; display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: white; color: var(--blue); font-weight: 900; }
+    .loop-num { color: var(--blue); font-size: .75rem; font-weight: 850; letter-spacing: .08em; }
+    .callout { margin: 18px 0 0; padding: 14px 16px; border-left: 4px solid var(--gold); border-radius: 9px; background: var(--gold-soft); }
+    .callout strong { color: #7c5104; }
+    .note { padding: 12px 14px; border-radius: 10px; background: #f0f4f7; color: #425161; font-size: .9rem; }
+    .anatomy-map { display: grid; grid-template-columns: minmax(200px,.8fr) minmax(300px,1.2fr); gap: 18px; align-items: center; }
+    .joint-map { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+    .joint-chip { padding: 10px 11px; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfd; }
+    .joint-chip strong { display: block; font-size: .84rem; }
+    .joint-chip span { color: var(--muted); font-size: .75rem; }
+    .count-badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 11px; border-radius: 9px; background: var(--blue-soft); color: #174f9b; font-weight: 800; }
+    .table-wrap { overflow-x: auto; }
+    .timeline { display: grid; grid-template-columns: repeat(6,minmax(100px,1fr)); gap: 8px; margin: 14px 0; }
+    .timeline-item { padding: 12px 10px; border-radius: 11px; background: #f0f5fa; text-align: center; }
+    .timeline-item strong { display: block; color: #155bc4; }
+    .timeline-item span { display: block; margin-top: 4px; color: var(--muted); font-size: .75rem; }
+    .checklist { display: grid; gap: 8px; padding: 0; list-style: none; }
+    .checklist li { display: flex; gap: 9px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+    .checkmark { color: var(--green); font-weight: 900; }
+    .experiment-log { min-width: 700px; }
+    .diagram { display: block; width: 100%; height: auto; margin: 18px 0 4px; }
+    .stage { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: #fbfcfd; }
+    .stage svg { display: block; width: 100%; height: auto; }
+    .motion-grid { display: grid; grid-template-columns: minmax(230px,.8fr) minmax(280px,1.2fr); gap: 12px; margin-top: 13px; }
+    .motion-card { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+    .motion-card h3 { margin: 2px 4px 0; }
+    .motion-card svg { display: block; width: 100%; height: auto; }
+    .hardware-photo { display: block; width: 100%; max-height: 390px; margin: 10px auto 8px; border-radius: 10px; background: #f1f3f4; object-fit: contain; object-position: center 55%; }
+    .hardware-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 4px 10px; }
+    .hardware-tags span { padding: 4px 8px; border-radius: 99px; background: #fff3dc; color: #76500c; font-size: .72rem; font-weight: 750; }
+    .motion-caption { margin: 0 4px 4px; color: var(--muted); font-size: .78rem; }
+    .joint-line { stroke-linecap: round; stroke-width: 9; }
+    .controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+    button {
+      padding: 9px 15px; border: 0; border-radius: 9px; background: var(--blue);
+      color: white; font: inherit; font-size: .9rem; font-weight: 750; cursor: pointer;
+    }
+    button:hover { background: #1554b7; }
+    input[type="range"] { min-width: 180px; flex: 1; accent-color: var(--blue); }
+    .live-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin-top: 12px; }
+    .metric { padding: 10px 12px; border-radius: 10px; background: #f1f5f8; }
+    .metric span { display: block; color: var(--muted); font-size: .76rem; }
+    .metric strong { font-variant-numeric: tabular-nums; }
+    .pose-readout { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 9px; margin-top: 12px; }
+    .joint { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+    .joint-head { display: flex; justify-content: space-between; gap: 8px; font-size: .82rem; }
+    .joint-head strong { font-variant-numeric: tabular-nums; }
+    .meter { height: 6px; margin-top: 7px; overflow: hidden; border-radius: 9px; background: #e7edf2; }
+    .meter i { display: block; height: 100%; border-radius: inherit; background: #4483e6; transition: width .1s linear; }
+    .speed-list { display: grid; gap: 7px; margin-top: 16px; }
+    .speed-row { display: grid; grid-template-columns: 66px minmax(40px,1fr) 110px; gap: 10px; align-items: center; font-size: .82rem; }
+    .speed { text-align: right; font-variant-numeric: tabular-nums; }
+    .bar-bg { height: 12px; overflow: hidden; border-radius: 20px; background: #edf1f4; }
+    .bar { height: 100%; border-radius: inherit; }
+    .bar.finish { background: linear-gradient(90deg, #34bd8a, #16865f); }
+    .bar.fall { background: linear-gradient(90deg, #f08d7e, #c64747); }
+    .result { text-align: right; font-weight: 730; font-variant-numeric: tabular-nums; }
+    .result.win { color: var(--green); }
+    .result.fail { color: var(--red); }
+    .formula {
+      overflow-x: auto; padding: 14px 16px; border-radius: 11px;
+      background: #13263b; color: #e6f1ff; font: .91rem/1.65 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .steps { counter-reset: n; display: grid; grid-template-columns: minmax(0,1fr); gap: 10px; }
+    .step { position: relative; min-width: 0; padding: 14px 15px 14px 52px; border: 1px solid var(--line); border-radius: 12px; overflow-wrap: anywhere; }
+    .step::before {
+      counter-increment: n; content: counter(n); position: absolute; left: 14px; top: 14px;
+      display: grid; width: 25px; height: 25px; place-items: center; border-radius: 50%;
+      background: var(--blue-soft); color: var(--blue); font-weight: 800; font-size: .8rem;
+    }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: .9rem; }
+    th, td { padding: 10px 11px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: #f5f8fa; font-size: .8rem; letter-spacing: .03em; }
+    td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    tr.best td { background: var(--green-soft); font-weight: 750; }
+    .pill-good { color: var(--green); font-weight: 800; }
+    .pill-bad { color: var(--red); font-weight: 800; }
+    .experiment { padding: 16px; border: 1px solid var(--line); border-radius: 13px; }
+    .experiment .hypothesis { color: var(--muted); font-size: .9rem; }
+    .experiment .change { margin-top: 9px; padding: 7px 9px; border-radius: 7px; background: #f3f6f8; font: .82rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+    details { margin: 10px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; }
+    summary { cursor: pointer; font-weight: 750; }
+    code { padding: 1px 4px; border-radius: 4px; background: #eef2f5; font-size: .9em; overflow-wrap: anywhere; }
+    pre { overflow-x: auto; padding: 14px; border-radius: 10px; background: #13263b; color: #e8f2ff; font: .81rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    footer { padding: 8px 0 42px; color: var(--muted); font-size: .84rem; }
+    @media (max-width: 720px) {
+      .hero { padding: 46px 0 34px; }
+      .hero-stats { grid-template-columns: repeat(2,1fr); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .loop-step:not(:last-child)::after { content: "↓"; top: auto; right: 12px; bottom: -20px; }
+      .motion-grid { grid-template-columns: 1fr; }
+      .anatomy-map { grid-template-columns: 1fr; }
+      .timeline { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .live-metrics { grid-template-columns: repeat(2,1fr); }
+      .speed-row { grid-template-columns: 55px minmax(25px,1fr) 94px; gap: 7px; font-size: .74rem; }
+      .pose-readout { grid-template-columns: 1fr; }
+      table { font-size: .8rem; }
+      th, td { padding: 8px 6px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="eyebrow">A visual field guide · Microduck 2 m Sprint</div>
+      <h1>From reward signal<br>to a fast little duck</h1>
+      <p>What reinforcement learning trains, what the Sprint simulator measures, and what happened in one real replay of the leading policy you supplied.</p>
+      <div class="hero-stats">
+        <div class="hero-stat"><strong>0.864 s</strong><span>best contender score · local evaluator</span></div>
+        <div class="hero-stat"><strong>1.15 m/s</strong><span>command chosen by the speed sweep</span></div>
+        <div class="hero-stat"><strong>5 / 5</strong><span>successful scored seeds</span></div>
+        <div class="hero-stat"><strong>61 → 14</strong><span>actor observations → joint targets</span></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="manual-nav" aria-label="Manual sections">
+    <a href="#overview">Overview</a><a href="#robot">Robot</a><a href="#replay">Replay</a>
+    <a href="#score">Scores</a><a href="#pipeline">RL pipeline</a><a href="#environment">Environment</a>
+    <a href="#policy-interface">Policy I/O</a><a href="#rewards">Rewards</a><a href="#runbook">Runbook</a>
+    <a href="#experiments">Experiments</a><a href="#evaluate-publish">Evaluate & publish</a><a href="#troubleshoot">Help</a>
+  </nav>
+
+  <main>
+    <section class="card" id="overview">
+      <span class="tag">Start with the distinction</span>
+      <h2>Challenge ≠ task ≠ policy</h2>
+      <div class="grid-3">
+        <div><h3>Challenge</h3><p>The Sprint rules: travel down a flat 2 m lane as quickly as possible without falling. The Arena tests a range of commanded speeds and scores the best successful one.</p></div>
+        <div><h3>Task / environment</h3><p>The training recipe: robot model, simulated physics, observations, rewards, randomization, and PPO settings. This is the challenge-specific <code>sprint_2m</code> task.</p></div>
+        <div><h3>Policy</h3><p>The learned controller. A trained checkpoint is PyTorch data (<code>model_N.pt</code>); export packages the actor and observation normalizer as an ONNX policy for the Arena.</p></div>
+      </div>
+      <svg class="diagram" viewBox="0 0 1000 142" role="img" aria-label="Pipeline from task through training and export to Arena score">
+        <defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#7890a7"/></marker></defs>
+        <g font-family="system-ui,sans-serif" text-anchor="middle">
+          <g><rect x="10" y="28" width="165" height="80" rx="14" fill="#e9f1ff" stroke="#b6cdf4"/><text x="92" y="60" font-size="15" font-weight="700" fill="#173d73">Challenge rules</text><text x="92" y="83" font-size="12" fill="#526579">2 m · finish · no fall</text></g>
+          <path d="M178 68h34" stroke="#7890a7" stroke-width="2" marker-end="url(#arr)"/>
+          <g><rect x="220" y="28" width="165" height="80" rx="14" fill="#f4efff" stroke="#d2c0ef"/><text x="302" y="60" font-size="15" font-weight="700" fill="#513881">Simulation task</text><text x="302" y="83" font-size="12" fill="#526579">physics + rewards</text></g>
+          <path d="M388 68h34" stroke="#7890a7" stroke-width="2" marker-end="url(#arr)"/>
+          <g><rect x="430" y="28" width="165" height="80" rx="14" fill="#e8f7f0" stroke="#b6e4d1"/><text x="512" y="60" font-size="15" font-weight="700" fill="#146348">PPO training</text><text x="512" y="83" font-size="12" fill="#526579">policy improves</text></g>
+          <path d="M598 68h34" stroke="#7890a7" stroke-width="2" marker-end="url(#arr)"/>
+          <g><rect x="640" y="28" width="165" height="80" rx="14" fill="#fff5dd" stroke="#eed695"/><text x="722" y="60" font-size="15" font-weight="700" fill="#75510c">Checkpoint</text><text x="722" y="83" font-size="12" fill="#526579">model_N.pt → ONNX</text></g>
+          <path d="M808 68h34" stroke="#7890a7" stroke-width="2" marker-end="url(#arr)"/>
+          <g><rect x="850" y="28" width="140" height="80" rx="14" fill="#ffefed" stroke="#f1c1b9"/><text x="920" y="60" font-size="15" font-weight="700" fill="#8a352e">Arena test</text><text x="920" y="83" font-size="12" fill="#526579">score + seeds</text></g>
+        </g>
+      </svg>
+    </section>
+
+    <section class="card" id="robot">
+      <span class="tag">The real robot · official product details</span>
+      <h2>A small physical robot, trained in a digital twin</h2>
+      <p class="lede">Pollen describes Microduck as an open-source, 25 cm biped intended for learning with reinforcement learning. The Sprint task trains a simulated twin; the exported policy is designed to run on the physical robot through its onboard control stack.</p>
+      <div class="grid-3">
+        <div class="spec"><div class="spec-icon" aria-hidden="true">↕</div><span class="spec-number">25 cm</span><strong>tall</strong><p class="small">A compact biped with a low center of mass and short steps.</p></div>
+        <div class="spec"><div class="spec-icon" aria-hidden="true">⚖</div><span class="spec-number">800 g</span><strong>to pick up</strong><p class="small">Small mass, but fast balance changes still matter at walking speed.</p></div>
+        <div class="spec"><div class="spec-icon" aria-hidden="true">⚙</div><span class="spec-number">15 motors</span><strong>product spec</strong><p class="small">The Sprint policy interface in this task sends 14 joint targets per control step.</p></div>
+        <div class="spec"><div class="spec-icon" aria-hidden="true">◉</div><span class="spec-number">Camera + LiDAR</span><strong>plus two IMUs</strong><p class="small">The product page lists these sensors; this Sprint actor’s 61 inputs are proprioception and command values, not camera/LiDAR images.</p></div>
+        <div class="spec"><div class="spec-icon" aria-hidden="true">↻</div><span class="spec-number">50 Hz</span><strong>onboard policy loop</strong><p class="small">One policy decision every 20 ms; physics and actuator response determine the motion between decisions.</p></div>
+        <div class="spec"><div class="spec-icon" aria-hidden="true">✦</div><span class="spec-number">7 trained moves</span><strong>ships with policies</strong><p class="small">Pollen says shipped moves are published and retrainable; Sprint is one community challenge among these behaviors.</p></div>
+      </div>
+      <h3 style="margin-top:24px">The sim-to-real learning cycle</h3>
+      <div class="grid-3">
+        <div class="loop-step"><div class="loop-num">01 · TRAIN</div><h3>Learn in simulation</h3><p>Run many parallel attempts in MuJoCo, on your machine or Hugging Face Jobs.</p></div>
+        <div class="loop-step"><div class="loop-num">02 · DEPLOY</div><h3>Run on Microduck</h3><p>Export the selected actor to ONNX so the onboard policy loop can execute it.</p></div>
+        <div class="loop-step"><div class="loop-num">03 · REFINE</div><h3>Measure and improve</h3><p>Compare real or Arena behavior, change one training hypothesis, and retrain.</p></div>
+      </div>
+      <p class="small" style="margin-top:16px">Official product details: <a href="https://pollen-robotics.com/microduck/" target="_blank" rel="noreferrer">Pollen Robotics — Microduck</a>. Robot product specs and the training task’s policy interface describe different layers: the product page lists total motors/sensors, while this Sprint model’s actor/action dimensions are defined by its task.</p>
+      <details>
+        <summary>Robot anatomy: what are the motors doing?</summary>
+        <p>The real robot is a small articulated biped. Motors at the hip, knee and ankle joints position the legs; neck/head joints orient and stabilize the head. The policy does not directly command motor voltage or torque. It requests joint positions, and the servo/actuator dynamics determine how quickly and strongly each joint follows.</p>
+        <div class="anatomy-map">
+          <div>
+            <img class="hardware-photo" src="images/microduck-closeup.jpg" alt="Microduck close-up showing joint actuator housings" style="max-height:330px">
+            <p class="motion-caption">The exposed dark rectangular modules are actuator housings. Each actuator has finite torque, friction, inertia, delay and speed limits.</p>
+          </div>
+          <div>
+            <div class="count-badge">Sprint actor: 14 outputs</div>
+            <div class="joint-map" style="margin-top:10px">
+              <div class="joint-chip"><strong>0–4 · Left leg</strong><span>hip yaw · hip roll · hip pitch · knee · ankle</span></div>
+              <div class="joint-chip"><strong>5–8 · Head/neck</strong><span>neck pitch · head pitch · head yaw · head roll</span></div>
+              <div class="joint-chip"><strong>9–13 · Right leg</strong><span>hip yaw · hip roll · hip pitch · knee · ankle</span></div>
+              <div class="joint-chip"><strong>Product spec: 15 motors</strong><span>The Sprint locomotion policy contract exposes 14 joint targets; product motor count is the whole robot, not an output dimension.</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="note">The Sprint actor gets no camera or LiDAR image input. Although the product includes a camera, LiDAR and two IMUs, this walking policy uses body angular velocity, gravity direction, joint state/history and command values. Do not infer that every physical sensor is used by this specific policy.</p>
+      </details>
+      <details>
+        <summary>What does “15 motors” versus “14 policy outputs” mean?</summary>
+        <p>The press kit describes the physical product as having 15 motors. This Sprint task’s documented actor contract is 14 commanded joint targets: the two 5-joint legs plus 4 head/neck joints. A product-wide actuator count and a task-specific action vector are different counts. Keep the 61-observation/14-action interface unchanged for this challenge; never add or remove a channel based only on the product headline count.</p>
+      </details>
+    </section>
+
+    <section class="card" id="replay">
+      <span class="tag">Actual replay · 1.15 m/s · seed 3</span>
+      <h2>Watch the contender’s recorded motion</h2>
+      <p class="lede">This is a recorded trace from the ONNX at <code>/Users/prithviraj/Project/microduck/policy.onnx-2</code>, evaluated locally with <code>arena score --store</code>. The lane position and joint values below are measured from that replay, sampled at 50 Hz and displayed at selected frames. The photo is the real Microduck from the provided press kit; it illustrates the hardware, not this simulation frame.</p>
+      <div class="stage">
+        <svg viewBox="0 0 920 180" role="img" aria-label="Animated duck marker traveling down a two-meter lane">
+          <rect x="36" y="43" width="848" height="92" rx="12" fill="#eef3f5"/>
+          <rect x="36" y="43" width="848" height="9" rx="4" fill="#c5d0d6"/>
+          <rect x="36" y="126" width="848" height="9" rx="4" fill="#c5d0d6"/>
+          <line x1="58" y1="88" x2="862" y2="88" stroke="#b7c6d0" stroke-width="2" stroke-dasharray="9 9"/>
+          <line x1="58" y1="55" x2="58" y2="124" stroke="#52728a" stroke-width="3"/>
+          <line x1="862" y1="55" x2="862" y2="124" stroke="#13815d" stroke-width="4"/>
+          <text x="58" y="29" text-anchor="middle" fill="#566575" font-size="13">START</text>
+          <text x="862" y="29" text-anchor="middle" fill="#13815d" font-size="13" font-weight="700">2 m FINISH</text>
+          <text x="58" y="157" text-anchor="middle" fill="#566575" font-size="12">0 m</text>
+          <text x="460" y="157" text-anchor="middle" fill="#566575" font-size="12">1 m</text>
+          <text x="862" y="157" text-anchor="middle" fill="#566575" font-size="12">2 m</text>
+          <line id="progressLine" x1="58" y1="89" x2="58" y2="89" stroke="#3482ec" stroke-width="3" opacity=".65"/>
+          <g id="duck" transform="translate(58 88)">
+            <ellipse cx="0" cy="0" rx="19" ry="11" fill="#f3c64b" stroke="#9b7019" stroke-width="1.5"/>
+            <circle cx="13" cy="-11" r="8" fill="#f3c64b" stroke="#9b7019" stroke-width="1.5"/>
+            <circle cx="16" cy="-13" r="1.5" fill="#17212b"/>
+            <path d="M20 -10l9 3-9 3z" fill="#e8803c"/>
+            <path d="M-7 9l-2 13m13-13l2 13" stroke="#516b80" stroke-width="2" stroke-linecap="round"/>
+            <path d="M-17 -4l-9 -7 4 13z" fill="#e2b33f"/>
+          </g>
+          <text id="laneTime" x="460" y="75" text-anchor="middle" fill="#234d7e" font-size="13" font-weight="700">0.00 s</text>
+        </svg>
+        <div class="motion-grid">
+          <div class="motion-card">
+            <h3>Real Microduck · actuators visible</h3>
+            <img class="hardware-photo" src="images/microduck-closeup.jpg" alt="Official press-kit close-up of a Microduck with its internal servo actuators visible at the neck and leg joints">
+            <div class="hardware-tags"><span>XL330 servo motors</span><span>leg joints</span><span>head + neck assembly</span></div>
+            <p class="motion-caption">Official press-kit close-up. The dark rectangular modules at the joints are the actuator/motor assemblies. <a href="images/microduck-closeup.jpg">Open full-size image</a>. Original: <a href="../microduck-press-kit/PHOTOS/microduck-closeup.jpg">press-kit photo</a>.</p>
+          </div>
+          <div class="motion-card">
+            <h3>Leg motion over the run</h3>
+            <svg viewBox="0 0 360 205" role="img" aria-label="Chart of measured left and right hip joint angles over time">
+              <rect x="42" y="20" width="292" height="145" rx="5" fill="#fbfcfd"/>
+              <g stroke="#dce4e8" stroke-width="1">
+                <line x1="42" y1="35" x2="334" y2="35"/><line x1="42" y1="77" x2="334" y2="77"/>
+                <line x1="42" y1="119" x2="334" y2="119"/><line x1="42" y1="161" x2="334" y2="161"/>
+              </g>
+              <g fill="#647382" font-size="10" text-anchor="end">
+                <text x="36" y="39">+1.5</text><text x="36" y="81">+0.5</text><text x="36" y="123">−0.5</text><text x="36" y="165">−1.5</text>
+              </g>
+              <g fill="#647382" font-size="10" text-anchor="middle">
+                <text x="42" y="181">0.0 s</text><text x="188" y="181">0.4 s</text><text x="334" y="181">0.84 s</text>
+              </g>
+              <polyline id="leftHipPlot" fill="none" stroke="#3181e7" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+              <polyline id="rightHipPlot" fill="none" stroke="#e28a37" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+              <line id="plotCursor" x1="42" y1="20" x2="42" y2="165" stroke="#17212b" stroke-width="1.5" stroke-dasharray="4 4"/>
+            </svg>
+            <p class="motion-caption"><span style="color:#3181e7;font-weight:700">Blue: left hip</span> · <span style="color:#b46c1c;font-weight:700">Orange: right hip</span> · angle in radians. See the legs swing differently as the trunk moves forward.</p>
+          </div>
+        </div>
+        <div class="controls">
+          <button id="playButton" type="button">▶ Play replay</button>
+          <label class="small" for="frameSlider">Scrub</label>
+          <input id="frameSlider" type="range" min="0" max="9" value="0" aria-label="Replay frame">
+          <span class="small" id="frameLabel">frame 1 / 10</span>
+        </div>
+        <div class="live-metrics">
+          <div class="metric"><span>elapsed</span><strong id="timeValue">0.00 s</strong></div>
+          <div class="metric"><span>distance from start</span><strong id="distanceValue">0.000 m</strong></div>
+          <div class="metric"><span>trunk pitch · roll</span><strong id="tiltValue">12.1° · 11.4°</strong></div>
+          <div class="metric"><span>speed command</span><strong>1.15 m/s</strong></div>
+        </div>
+        <div class="pose-readout" aria-label="Measured joint positions from recorded replay">
+          <div class="joint"><div class="joint-head"><span>Left hip pitch</span><strong id="lhp">-1.061 rad</strong></div><div class="meter"><i id="lhpBar"></i></div></div>
+          <div class="joint"><div class="joint-head"><span>Right hip pitch</span><strong id="rhp">0.648 rad</strong></div><div class="meter"><i id="rhpBar"></i></div></div>
+          <div class="joint"><div class="joint-head"><span>Left knee</span><strong id="lk">-0.161 rad</strong></div><div class="meter"><i id="lkBar"></i></div></div>
+          <div class="joint"><div class="joint-head"><span>Right knee</span><strong id="rk">0.524 rad</strong></div><div class="meter"><i id="rkBar"></i></div></div>
+        </div>
+      </div>
+      <div class="callout"><strong>What this replay shows:</strong> at 0.6 s, the recorded trunk had pitched about 21° and the duck had covered about 1.31 m. By 0.8 s it was near the finish, with the trunk tipping sharply; it crossed the finish at 0.86 s. In the Arena’s scoring logic, the fall rule requires the tilt threshold to hold for 0.3 s; reaching the finish first counts as a finish. This is a very fast but visibly aggressive gait—not proof that the controller is stable at every speed.</div>
+      <p class="note"><strong>Outputs vs. recorded motion:</strong> the exported actor emits 14 joint-position targets every 20 ms. The Arena replay trace stores trunk position/orientation and the 14 measured joint positions—not the raw ONNX target vector or full observations. The joint readings above are actual replay state, not invented “action outputs.”</p>
+    </section>
+
+    <section class="card" id="score">
+      <span class="tag">Measured speed sweep</span>
+      <h2>Fast at the top end; fragile in the middle</h2>
+      <p class="lede">The evaluator tried 21 commands. This picture is from the same local run. Green bars are first-pass finishes; red bars are falls. The three fastest candidates were then tested on five seeds.</p>
+      <div id="speedSweep" class="speed-list" aria-label="Local speed sweep outcomes"></div>
+      <div class="grid-2" style="margin-top:20px">
+        <div>
+          <h3>Five scored seeds at 1.15 m/s</h3>
+          <table>
+            <thead><tr><th>Seed</th><th>Outcome</th><th>Time</th></tr></thead>
+            <tbody>
+              <tr><td class="num">1</td><td class="pill-good">Finish</td><td class="num">0.86 s</td></tr>
+              <tr><td class="num">2</td><td class="pill-good">Finish</td><td class="num">0.86 s</td></tr>
+              <tr><td class="num">3</td><td class="pill-good">Finish</td><td class="num">0.86 s</td></tr>
+              <tr><td class="num">4</td><td class="pill-good">Finish</td><td class="num">0.86 s</td></tr>
+              <tr><td class="num">5</td><td class="pill-good">Finish</td><td class="num">0.88 s</td></tr>
+              <tr class="best"><td>Mean</td><td>5 / 5</td><td class="num">0.864 s</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3>Your trained run: checkpoint comparison</h3>
+          <table>
+            <thead><tr><th>Checkpoint</th><th>Speed</th><th>Score</th><th>Finished</th></tr></thead>
+            <tbody>
+              <tr><td class="num">0</td><td class="num">0.60 m/s</td><td class="num">50.000 s</td><td class="pill-bad">0 / 5</td></tr>
+              <tr><td class="num">250</td><td class="num">0.25 m/s</td><td class="num">11.036 s</td><td>5 / 5</td></tr>
+              <tr class="best"><td class="num">1500</td><td class="num">0.55 m/s</td><td class="num">5.136 s</td><td>5 / 5</td></tr>
+              <tr><td class="num">2999</td><td class="num">0.55 m/s</td><td class="num">5.196 s</td><td>5 / 5</td></tr>
+            </tbody>
+          </table>
+          <p class="small">All scores shown here are local evaluations. The published leaderboard result can vary with evaluator version and official execution.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="pipeline">
+      <span class="tag">How PPO learns</span>
+      <h2>The training loop, one cycle at a time</h2>
+      <p class="lede">PPO does not get a script saying “move the left foot now.” It tries actions, sees their consequences, and updates a neural network so useful actions become more likely. A separate value network estimates how good a situation is, helping PPO judge whether an outcome was better or worse than expected.</p>
+      <div class="steps">
+        <div class="step"><strong>Observe:</strong> the actor receives 61 values—gyro, gravity direction, 14 relative joint angles, 14 joint velocities, previous actions, and 13 command values.</div>
+        <div class="step"><strong>Act:</strong> a neural network maps those numbers to 14 joint-position targets. The Arena and training run the control loop at 50 Hz (one decision every 20 ms).</div>
+        <div class="step"><strong>Simulate:</strong> MuJoCo advances the robot and contacts. One control period consists of four 5 ms physics steps; an XL330/BAM actuator model turns target error into limited, delayed motor torque.</div>
+        <div class="step"><strong>Score the transition:</strong> speed tracking and gait rewards add incentives; falls terminate an episode. The training critic uses extra privileged observations (77 values) unavailable to the actor.</div>
+        <div class="step"><strong>Update and repeat:</strong> PPO uses the rollout to adjust its actor and critic. It clips policy changes to reduce destructive updates, and an entropy term encourages continued exploration.</div>
+        <div class="step"><strong>Save checkpoints:</strong> after periodic training intervals, a snapshot such as <code>model_1500.pt</code> is saved. Evaluate all useful snapshots: the last one can be worse than an earlier one.</div>
+      </div>
+      <svg class="diagram" viewBox="0 0 1000 285" role="img" aria-label="Reinforcement learning feedback loop">
+        <defs><marker id="arr2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#7890a7"/></marker></defs>
+        <g font-family="system-ui,sans-serif" text-anchor="middle">
+          <rect x="35" y="92" width="190" height="92" rx="16" fill="#e9f1ff" stroke="#b6cdf4"/>
+          <text x="130" y="125" font-size="16" font-weight="700" fill="#173d73">61 observations</text><text x="130" y="150" font-size="12" fill="#526579">actor input</text>
+          <rect x="290" y="92" width="190" height="92" rx="16" fill="#f4efff" stroke="#d2c0ef"/>
+          <text x="385" y="125" font-size="16" font-weight="700" fill="#513881">Actor network</text><text x="385" y="150" font-size="12" fill="#526579">MLP → 14 targets</text>
+          <rect x="545" y="92" width="190" height="92" rx="16" fill="#fff5dd" stroke="#eed695"/>
+          <text x="640" y="125" font-size="16" font-weight="700" fill="#75510c">Robot + physics</text><text x="640" y="150" font-size="12" fill="#526579">4 × 5 ms → next state</text>
+          <rect x="800" y="92" width="165" height="92" rx="16" fill="#e8f7f0" stroke="#b6e4d1"/>
+          <text x="882" y="125" font-size="16" font-weight="700" fill="#146348">Reward + critic</text><text x="882" y="150" font-size="12" fill="#526579">advantage estimate</text>
+          <path d="M228 138h53" stroke="#7890a7" stroke-width="2" marker-end="url(#arr2)"/>
+          <path d="M483 138h53" stroke="#7890a7" stroke-width="2" marker-end="url(#arr2)"/>
+          <path d="M738 138h53" stroke="#7890a7" stroke-width="2" marker-end="url(#arr2)"/>
+          <path d="M880 191v52H385v-52" fill="none" stroke="#7890a7" stroke-width="2" marker-end="url(#arr2)"/>
+          <text x="630" y="265" font-size="13" fill="#526579">PPO update: improve actions that did better than expected</text>
+        </g>
+      </svg>
+      <div class="grid-2">
+        <div>
+          <h3>Actor: deployed at runtime</h3>
+          <div class="formula">61 → 512 → 256 → 128 → 14<br>ELU activations · normalized observations<br>outputs: joint-position targets</div>
+        </div>
+        <div>
+          <h3>Critic: training helper only</h3>
+          <div class="formula">77 → 512 → 256 → 128 → 1<br>ELU activations · privileged state<br>output: estimated future return</div>
+        </div>
+      </div>
+      <p class="note"><strong>Scale of this run:</strong> 4,096 parallel simulated environments × 24 control steps per environment per PPO iteration gives about 98,304 transitions in each rollout. At 3,000 iterations, that is about 295 million environment-step samples, before accounting for PPO’s repeated optimization over the rollout.</p>
+      <details>
+        <summary>PPO settings used by the Sprint actor/critic</summary>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Setting</th><th>Value</th><th>What it means</th></tr></thead>
+          <tbody>
+            <tr><td>Rollout horizon</td><td>24 steps per environment</td><td>Each parallel world contributes 24 consecutive decisions before the update.</td></tr>
+            <tr><td>Learning rate</td><td>0.001 · adaptive schedule</td><td>Update size adjusts based on training behavior / KL.</td></tr>
+            <tr><td>Epochs / mini-batches</td><td>5 / 4</td><td>Reuse each rollout for several gradient updates.</td></tr>
+            <tr><td>Policy clip</td><td>0.2</td><td>Limits how far each PPO update changes action probabilities.</td></tr>
+            <tr><td>Discount / GAE lambda</td><td>0.99 / 0.95</td><td>Balance near-term rewards and longer-term estimates.</td></tr>
+            <tr><td>Entropy coefficient</td><td>0.01</td><td>Encourages exploration early in learning.</td></tr>
+            <tr><td>Checkpoint interval</td><td>250 iterations</td><td>Allows checkpoint-level evaluation; best need not be last.</td></tr>
+          </tbody>
+        </table></div>
+      </details>
+    </section>
+
+    <section class="card" id="environment">
+      <span class="tag">The dynamics that shape the gait</span>
+      <h2>What the simulated duck is physically dealing with</h2>
+      <div class="grid-2">
+        <div>
+          <h3>Course and termination</h3>
+          <ul>
+            <li>Flat lane, 2.0 m long and 0.8 m wide, with 0.15 m walls.</li>
+            <li>Starts in the STAND pose; joints are perturbed by ±0.01 rad and yaw by ±2°.</li>
+            <li>0.5 s settling period is untimed. The policy is already controlling the duck.</li>
+            <li>A sustained trunk tilt beyond 60° for 0.3 s is a fall; the timeout is 50 s.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Control and contact</h3>
+          <ul>
+            <li>Physics step: 5 ms. Policy/servo control interval: 4 physics steps = 20 ms = 50 Hz.</li>
+            <li>Fourteen active joints: five per leg plus four neck/head joints.</li>
+            <li>Joint targets pass through the BAM XL330 actuator model, not direct torque control.</li>
+            <li>Feet push against the ground; alternating support and swing must create forward impulse without tipping the trunk.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Training disturbances</h3>
+          <ul>
+            <li>Velocity pushes up to ±0.3 m/s every 3–6 s (training only).</li>
+            <li>Foot friction and body/head center of mass are randomized.</li>
+            <li>IMU mounting orientation, encoder bias, mass/inertia, and armature are randomized.</li>
+            <li>Small observation noise and a one-control-step joint-velocity lag make inputs less idealized.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Why deployment differs slightly</h3>
+          <ul>
+            <li>The Arena uses nominal physics/randomization values and no training pushes or observation noise.</li>
+            <li>It retains the BAM actuator model, training-matched command delay, and one-step velocity lag.</li>
+            <li>A small training/evaluation mismatch can change a balance-sensitive gait; use official results to confirm a local win.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="formula" style="margin-top:16px">policy(obsₜ) → joint targetsₜ → delayed/limited actuator torque → contact + gravity → stateₜ₊₁</div>
+      <details>
+        <summary>Exact Arena course and race rules</summary>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Rule</th><th>Sprint setting</th><th>Why it matters</th></tr></thead>
+          <tbody>
+            <tr><td>Lane</td><td>2.0 m long · 0.8 m wide · 0.15 m walls · flat</td><td>Forward progress is the objective; sideways drift can hit a wall.</td></tr>
+            <tr><td>Start</td><td>STAND keyframe · ±0.01 rad joint perturbation · ±2° yaw</td><td>The controller must tolerate small start variation.</td></tr>
+            <tr><td>Settle</td><td>0.5 s, untimed</td><td>The policy controls the duck before scored timing starts.</td></tr>
+            <tr><td>Speed sweep</td><td>0.20 to 1.20 m/s, step 0.05; seed 1 screening</td><td>Each speed is tried; the fastest candidates are re-tested on seeds 1–5.</td></tr>
+            <tr><td>Finish</td><td>Cross 2.0 m</td><td>Fall is checked before finish; finishing first wins that step.</td></tr>
+            <tr><td>Fall</td><td>Gravity-z threshold above −0.5 for 0.3 s</td><td>A brief tip alone is not an immediate fall.</td></tr>
+            <tr><td>Timeout</td><td>50 s</td><td>Fall or timeout is penalized; first achieve 5/5 finishes.</td></tr>
+          </tbody>
+        </table></div>
+      </details>
+      <details>
+        <summary>Training randomization, with actual ranges</summary>
+        <div class="table-wrap"><table>
+          <thead><tr><th>What varies during training</th><th>Configured range / schedule</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Footpad friction</td><td>Scale 0.7–1.3</td><td>Robustness to floor grip.</td></tr>
+            <tr><td>Trunk center of mass</td><td>±3 mm start; curriculum to ±5, ±10, then ±15 mm</td><td>Robust balance to assembly/loading differences.</td></tr>
+            <tr><td>Head assembly CoM</td><td>±3 mm start; to ±5 then ±10 mm</td><td>Head mass is a large lever on the small body.</td></tr>
+            <tr><td>Mass and inertia</td><td>0.95–1.05 scale, per environment at startup</td><td>Small physical variation, randomized consistently.</td></tr>
+            <tr><td>Joint friction / armature</td><td>0.9–1.1 scale</td><td>Variation in actuator load and reflected rotor inertia.</td></tr>
+            <tr><td>Encoder bias</td><td>±0.015 rad per joint</td><td>Actor learns not to rely on perfect encoder zero.</td></tr>
+            <tr><td>IMU mounting</td><td>Up to 6° misalignment</td><td>Actor sees a rotated gyro/gravity frame.</td></tr>
+            <tr><td>Actor observation noise</td><td>gyro ±0.03; gravity ±0.01; joint position ±0.001; joint velocity ±0.25</td><td>Approximates sensor noise; actor only.</td></tr>
+            <tr><td>Joint velocity lag</td><td>Exactly 1 control step (20 ms)</td><td>Matches a delayed/moving-average velocity reading.</td></tr>
+            <tr><td>Velocity pushes</td><td>±0.3 m/s in x/y every 3–6 s</td><td>Training robustness disturbance; Arena has no pushes.</td></tr>
+            <tr><td>Base tilt / motor gains</td><td>Disabled in this Sprint task</td><td>Do not assume every available randomizer is active.</td></tr>
+          </tbody>
+        </table></div>
+        <p class="note">Randomization should cover realistic variation, not invent physics the Arena does not use. The Arena uses nominal values for these randomized properties; it does retain the BAM actuator behavior and training-matched delays.</p>
+      </details>
+    </section>
+
+    <section class="card" id="policy-interface">
+      <span class="tag">The policy contract</span>
+      <h2>Exactly what goes into and comes out of the network</h2>
+      <p class="lede">This interface is a contract shared by training, export and Arena evaluation. The actor never sees the critic’s privileged training-only signals.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Actor input block</th><th>Size</th><th>Plain-language meaning</th></tr></thead>
+        <tbody>
+          <tr><td>Body angular velocity (gyro)</td><td class="num">3</td><td>How quickly the trunk rotates around x/y/z.</td></tr>
+          <tr><td>Projected gravity</td><td class="num">3</td><td>Which way “down” points in the trunk frame; a tilt cue.</td></tr>
+          <tr><td>Relative joint positions</td><td class="num">14</td><td>Each active joint angle relative to its default pose.</td></tr>
+          <tr><td>Joint velocities</td><td class="num">14</td><td>One-control-step-old actuator/joint motion estimate.</td></tr>
+          <tr><td>Previous action</td><td class="num">14</td><td>Actor’s last set of joint targets, useful for temporal continuity.</td></tr>
+          <tr><td>Command block</td><td class="num">13</td><td>Twist (3) + head pose (4) + body pose (6). Sprint commands forward x; unused values remain in the fixed layout.</td></tr>
+          <tr><th>Total actor input</th><th>61</th><th>Fixed ONNX input shape</th></tr>
+        </tbody>
+      </table></div>
+      <div class="grid-2">
+        <div class="spec"><div class="spec-icon" aria-hidden="true">↦</div><span class="spec-number">14 targets</span><strong>Actor action</strong><p class="small">Five joints per leg plus four neck/head joints, ordered exactly as in the policy contract.</p></div>
+        <div class="spec"><div class="spec-icon" aria-hidden="true">◈</div><span class="spec-number">77 values</span><strong>Critic-only observation</strong><p class="small">Includes actor inputs plus privileged base linear velocity, foot/contact sensors and heading error. It trains the value estimate; it is not exported as the actor input.</p></div>
+      </div>
+      <details>
+        <summary>Why the observation normalizer must be exported too</summary>
+        <p>During training, observations are normalized using running statistics. The policy expects normalized inputs. The project exporter bakes that normalization into the ONNX graph; exporting only the actor weights would feed the wrong scale at runtime and can change behavior even when the network weights are unchanged. Use <code>uv run publish</code> or the supported export path; do not hand-convert <code>model_N.pt</code>.</p>
+      </details>
+    </section>
+
+    <section class="card" id="rewards">
+      <span class="tag">What the optimizer is encouraged to do</span>
+      <h2>Reward recipe: forward, upright, stepping, smooth</h2>
+      <p class="lede">The reward is a training signal, not the competition metric. The tunable parameters live in <code>challenge.toml</code>; the rest of the task recipe is in <code>env.py</code>.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Reward term</th><th>Current setting</th><th>Intended effect</th><th>Possible failure mode</th></tr></thead>
+        <tbody>
+          <tr><td>Track linear velocity</td><td>weight 2.0 · std √0.1</td><td>Follow sampled forward speed.</td><td>Too weak: slow gait; too strong: risky speed chasing.</td></tr>
+          <tr><td>Stay upright</td><td>weight 2.0 · std √0.05</td><td>Keep trunk near upright while allowing necessary dynamics.</td><td>Too strong can reward caution; too weak permits forward pitch/falls.</td></tr>
+          <tr><td>Air time / stepping</td><td>weight 3.0 · target window 0.125–0.300 s</td><td>Encourage feet to alternate and lift rather than shuffle.</td><td>Excess may encourage hopping or over-lifting.</td></tr>
+          <tr><td>Pose</td><td>weight 1.0; legs only</td><td>Keep leg posture near a useful nominal gait pose.</td><td>Can restrain the leg motion required for faster strides.</td></tr>
+          <tr><td>Track angular velocity</td><td>weight 2.0 · std √0.5</td><td>Match the zero-turn command and avoid unnecessary spin.</td><td>Small yaw drift can still accumulate into lane drift.</td></tr>
+          <tr><td>Heading hold</td><td>weight 1.0 · std 0.4 rad</td><td>Price turning away from spawn heading.</td><td>Removing it historically led to a slow turn into a wall.</td></tr>
+          <tr><td>Head pose tracking</td><td>weight 2.0</td><td>Track small head/neck commands while walking.</td><td>Overtight tracking taxes gait; do not tighten its std casually.</td></tr>
+          <tr><td>Head pose bias</td><td>ramps 0 → 3.0 from iteration 600–1500</td><td>Correct slow head droop without taxing every step oscillation.</td><td>Changing its schedule early may distract from learning a gait.</td></tr>
+          <tr><td>Action-rate smoothness</td><td>ramps −0.1 → −1.0 by iteration 1500</td><td>Reduce target jitter after basic walking emerges.</td><td>Too much too early blocks skill discovery.</td></tr>
+          <tr><td>Foot clearance / swing height</td><td>targets 0.02 m; negative weights</td><td>Reduce foot dragging and shape the swing.</td><td>Over-emphasis can raise the feet more than needed.</td></tr>
+          <tr><td>Body angular velocity / angular momentum</td><td>−0.05 / −0.02</td><td>Regularize excessive trunk motion.</td><td>Strong motion penalties can suppress dynamic acceleration.</td></tr>
+          <tr><td>Foot slip / self collision / joint limits</td><td>−0.1 / −1.0 / −1.0</td><td>Discourage slipping, collisions and limit contact.</td><td>Penalty sign mistakes can reward the behavior meant to be discouraged.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout"><strong>Reward-design rule:</strong> the policy optimizes exactly what the rewards specify. If an unintended stable pose earns more reward, PPO can discover and exploit it. Inspect individual reward curves; every penalty’s weighted contribution should remain ≤ 0.</div>
+      <details>
+        <summary>What the three beginner knobs really change</summary>
+        <div class="table-wrap"><table>
+          <thead><tr><th>challenge.toml parameter</th><th>Range</th><th>Maps to</th><th>Good first question</th></tr></thead>
+          <tbody>
+            <tr><td><code>forward_reward</code></td><td>0.5–5.0</td><td><code>track_linear_velocity</code></td><td>Does higher weight make faster successful commands more likely?</td></tr>
+            <tr><td><code>upright_reward</code></td><td>0.5–5.0</td><td><code>upright</code></td><td>Does more balance pressure prevent high-speed falls, or make gait cautious?</td></tr>
+            <tr><td><code>step_reward</code></td><td>0.0–6.0</td><td><code>air_time</code></td><td>Does stronger stepping improve clearance, or trigger hopping?</td></tr>
+          </tbody>
+        </table></div>
+        <p>Change one knob at a time, and use small increments (for example 2 → 3). A weight change alters a trade-off; it does not directly set a speed or prescribe a foot trajectory.</p>
+      </details>
+    </section>
+
+    <section class="card">
+      <span class="tag">Training changes over time</span>
+      <h2>Curriculum: why iteration 250 and 1500 are different worlds</h2>
+      <p class="lede">Some training pressures ramp up as learning progresses. Iteration is an update number; each iteration contains 24 control steps per environment.</p>
+      <div class="timeline">
+        <div class="timeline-item"><strong>0</strong><span>action-rate penalty −0.1<br>standing envs 2%<br>CoM ±3 mm</span></div>
+        <div class="timeline-item"><strong>500</strong><span>smoothness −0.2<br>standing envs 5%<br>CoM ±5 mm</span></div>
+        <div class="timeline-item"><strong>750</strong><span>smoothness −0.4<br>standing envs 10%</span></div>
+        <div class="timeline-item"><strong>1000</strong><span>smoothness −0.6<br>standing envs 15%<br>CoM ±10 mm</span></div>
+        <div class="timeline-item"><strong>1500</strong><span>smoothness −1.0<br>standing envs 20%<br>CoM ±15 mm</span></div>
+        <div class="timeline-item"><strong>2000</strong><span>standing envs 25%<br>full run continues</span></div>
+      </div>
+      <p class="note">This chart shows the major stages, not every curriculum field. Head CoM randomization ramps to ±10 mm by iteration 1000; head-bias reward ramps from 0 after iteration 600 to 3.0 at 1500. A sudden curve shift at a curriculum boundary may be expected, but verify it recovers.</p>
+    </section>
+
+    <section class="card" id="experiments">
+      <span class="tag">A learning plan</span>
+      <h2>Experiments that teach you something</h2>
+      <p class="lede">Run one controlled experiment at a time. Before each run, write a prediction. Keep the Arena sweep and observation/action layout intact; compare the best 5/5 checkpoint from every run.</p>
+      <div class="grid-2">
+        <article class="experiment">
+          <h3>1 · Repeat baseline with a new seed</h3>
+          <div class="change">change: seed 1 → seed 2</div>
+          <p class="hypothesis"><strong>Question:</strong> how much does training randomness alone move the result? If outcomes vary widely, reward tweaks need repeat runs to distinguish signal from luck.</p>
+        </article>
+        <article class="experiment">
+          <h3>2 · Ask for more speed tracking</h3>
+          <div class="change">forward_reward: 2.0 → 3.0</div>
+          <p class="hypothesis"><strong>Hypothesis:</strong> stronger speed tracking may move successful commands upward. Watch whether 1.0–1.2 m/s finishes improve or fall rate rises.</p>
+        </article>
+        <article class="experiment">
+          <h3>3 · Test balance emphasis separately</h3>
+          <div class="change">upright_reward: 2.0 → 3.0</div>
+          <p class="hypothesis"><strong>Hypothesis:</strong> stronger upright reward may preserve fast finishes, but could make the gait overly cautious. Do not combine with experiment 2 on the first try.</p>
+        </article>
+        <article class="experiment">
+          <h3>4 · Aim training at fast commands</h3>
+          <div class="change">sample command speeds non-uniformly; keep 0.20–1.20</div>
+          <p class="hypothesis"><strong>Question:</strong> does sampling high speeds more often make the top-speed policy less brittle? This requires a deliberate command-sampling change in the environment, not narrowing the Arena’s tested range.</p>
+        </article>
+      </div>
+      <div class="callout"><strong>Keep an experiment notebook:</strong> hypothesis → one edit → test/smoke run → full training → score checkpoints → official entry only after choosing a winner. Save every run to its own checkpoint repo so experiments remain comparable and reproducible.</div>
+      <details>
+        <summary>Experiment worksheet: fill this in before every run</summary>
+        <div class="table-wrap"><table class="experiment-log">
+          <thead><tr><th>Field</th><th>Example for a next run</th></tr></thead>
+          <tbody>
+            <tr><td>Run name</td><td><code>forward3-seed1</code></td></tr>
+            <tr><td>Baseline</td><td>Current challenge config, seed 1, best baseline checkpoint 1500.</td></tr>
+            <tr><td>One change</td><td><code>forward_reward</code>: 2.0 → 3.0; all else unchanged.</td></tr>
+            <tr><td>Hypothesis</td><td>More speed-tracking pressure will improve 1.0–1.2 m/s completion, possibly at a cost to stability.</td></tr>
+            <tr><td>Primary measure</td><td>Best 5/5 command speed and mean time.</td></tr>
+            <tr><td>Secondary measures</td><td>Falls across all 21 sweep speeds; checkpoint variance; fall progress/location.</td></tr>
+            <tr><td>Keep / reject rule</td><td>Keep only if a checkpoint improves the official objective without sacrificing 5/5 completion.</td></tr>
+          </tbody>
+        </table></div>
+      </details>
+      <details>
+        <summary>Example: what exactly is a reward change testing?</summary>
+        <p>The current <code>forward_reward = 2.0</code> sets the weight of the velocity-tracking reward. Raising it does <em>not</em> directly force the duck to move faster; it increases the training incentive to match the sampled command. The policy can still discover that a command is too risky and fall or move cautiously. The evaluator’s speed sweep is the measurement that decides whether the change helped.</p>
+      </details>
+    </section>
+
+    <section class="card" id="runbook">
+      <span class="tag">Reproducible workflow</span>
+      <h2>Commands for the next experiment</h2>
+      <p>From the challenge checkout, authenticate once and confirm your account:</p>
+      <pre>uv run hf auth whoami</pre>
+      <p>Edit one knob in <code>src/microduck_challenges/sprint_2m/challenge.toml</code>. For example, change <code>forward_reward</code> from 2.0 to 3.0, then run tests and a short CPU smoke test:</p>
+      <pre>uv run --group workshop pytest
+uv run train Mjlab-Sprint2m-MicroDuck --gpu-ids None \
+  --env.scene.num-envs 2 --agent.max-iterations 2 \
+  --agent.logger tensorboard --agent.run-name smoke</pre>
+      <p>After a full run, download its job checkpoint repo, export and score checkpoints with the local Arena evaluator, then publish the best checkpoint only after you decide to submit it. The challenge guide documents full launch and checkpoint commands:</p>
+      <p><a href="src/microduck_challenges/sprint_2m/AGENTS.md">Open the Sprint 2m training guide</a> · <a href="TRAINING_WALKTHROUGH.md">Open the text end-to-end walkthrough</a></p>
+      <p class="small">The smoke command is for configuration validation, not a competitive policy. Full Hugging Face Jobs use paid compute; check hardware and budget before launch.</p>
+      <details>
+        <summary>Full local training command (NVIDIA GPU machine)</summary>
+        <pre>RUN=forward3
+uv run train Mjlab-Sprint2m-MicroDuck \
+  --env.scene.num-envs 4096 \
+  --agent.max-iterations 3000 \
+  --agent.seed 1 \
+  --agent.logger tensorboard \
+  --agent.run-name "$RUN" \
+  > "logs/$RUN.log" 2>&amp;1</pre>
+        <p>Local output is under <code>logs/rsl_rl/sprint_2m/&lt;timestamp&gt;_&lt;run-name&gt;/</code>; it contains <code>model_*.pt</code>, TensorBoard events and provenance metadata.</p>
+      </details>
+      <details>
+        <summary>Full Hugging Face Jobs command (cloud GPU; billed)</summary>
+        <pre>USER=prithviraj-maurya
+RUN=forward3
+uv run train Mjlab-Sprint2m-MicroDuck \
+  --env.scene.num-envs 4096 \
+  --agent.max-iterations 3000 \
+  --agent.seed 1 \
+  --agent.logger tensorboard \
+  --agent.run-name "$RUN" \
+  --hf-jobs --no-wandb \
+  --namespace "$USER" \
+  --ckpt-repo "$USER/mjlab-sprint2m-microduck-$RUN"</pre>
+        <p>Authenticate first with <code>uv run hf auth login</code>. Hugging Face Jobs need billing enabled; the Sprint guide estimates the 3,000-iteration recipe at roughly 1–2.5 hours on default <code>l4x1</code> hardware, billed to your account. Confirm current pricing before launch.</p>
+        <p>The job log gives two identifiers: <strong>job ID</strong> for inspecting the job, and <strong>checkpoint repo ID</strong> for downloading artifacts. They are not interchangeable. The checkpoint repo should look like <code>username/mjlab-sprint2m-microduck-runname</code>.</p>
+      </details>
+      <details>
+        <summary>Watch progress and training health</summary>
+        <pre>grep -o "Learning iteration [0-9]*/[0-9]*" logs/forward3.log | tail -1</pre>
+        <p>Healthy signs: mean episode length moves toward 1,000 steps (20 s), fall termination rate drops, and <code>track_linear_velocity</code> reward continues to improve. Investigate flat velocity reward, rising falls, NaNs, or a collapse that persists for roughly 500 iterations. Reward curves are diagnostics—not the final race score.</p>
+        <p>After a cloud run, inspect its job page/logs for <code>[ckpt] checkpoints -&gt; ...</code> and use that repo in the next download step.</p>
+      </details>
+    </section>
+
+    <section class="card" id="evaluate-publish">
+      <span class="tag">Judge → choose → submit</span>
+      <h2>Checkpoint evaluation and publishing</h2>
+      <p class="lede">Separate three actions: download training artifacts, locally export/score checkpoints, then explicitly publish the selected checkpoint. A local dry run does not upload anything.</p>
+      <div class="steps">
+        <div class="step"><strong>Download the checkpoint repo:</strong> use the repo ID printed in the job log, not the task name or job ID.
+          <pre>CKPT_REPO=prithviraj-maurya/mjlab-sprint2m-microduck-forward3
+uv run hf download "$CKPT_REPO" --local-dir logs/rsl_rl
+find logs/rsl_rl/sprint_2m -type f -name 'model_*.pt'</pre>
+        </div>
+        <div class="step"><strong>Export and score candidate checkpoints:</strong> the Arena’s sweep scores the policy across speeds, then evaluates finalists on 5 seeds.
+          <pre>RUN_DIR=logs/rsl_rl/sprint_2m/2026-10-16_18-25-21_first
+for N in 250 500 750 1000 1250 1500 1750 2000 2250 2500 2750 2999; do
+  echo "=== checkpoint $N ==="
+  uv run publish --run "$RUN_DIR" --checkpoint "$N" \
+    --repo local/microduck-eval --dry-run --allow-dirty || break
+  uv run --group workshop arena score publish-eval/policy.onnx --event sprint-2m \
+    | grep -E '^(scored at|score )'
+done</pre>
+          <p>Adjust the checkpoint numbers to those that actually exist. The evaluation can take time; the Workshop UI can evaluate checkpoints as they appear.</p>
+        </div>
+        <div class="step"><strong>Select objectively:</strong> require 5/5 finishes first, then compare mean time; also consider the fastest command and fall pattern. Do not assume the final checkpoint is best.
+          <p>For your reported run, checkpoint 1500 scored 5.136 s at 0.55 m/s (5/5), slightly better locally than checkpoint 2999 at 5.196 s. The contender policy you tested scored 0.864 s locally at 1.15 m/s (5/5). Local results are useful comparisons, not guaranteed official results.</p>
+        </div>
+        <div class="step"><strong>Publish only when you choose:</strong> the following command makes the target repo public and enters the selected checkpoint. Replace the run path, number and repo for a different experiment.
+          <pre>uv run publish \
+  --run logs/rsl_rl/sprint_2m/2026-10-16_18-25-21_first \
+  --checkpoint 1500 \
+  --repo prithviraj-maurya/microduck-sprint-2m-forward3 \
+  --no-private --enter</pre>
+        </div>
+      </div>
+      <details>
+        <summary>Public vs private, overwrite behavior, and what gets uploaded</summary>
+        <ul>
+          <li><code>--no-private --enter</code>: create/update a public policy and submit it to the Arena.</li>
+          <li>For a private Hub policy only, omit both flags. A private model cannot enter the Arena.</li>
+          <li>The publish tool exports the checkpoint as <code>policy.onnx</code>, validates its 61→14 shape and smoke output, and uploads policy metadata.</li>
+          <li>If the target repo already contains <code>policy.onnx</code>, publish stops unless you deliberately add <code>--force</code>. That replaces the existing policy; it does not create a second ONNX file.</li>
+          <li>Use a separate repo per experiment when possible. This preserves prior policies and makes comparison easier.</li>
+        </ul>
+      </details>
+      <details>
+        <summary>Understanding rank and the scoring objective</summary>
+        <p>The Sprint sweeps commands 0.20–1.20 m/s in 0.05 m/s increments. Seed 1 screens each speed; the three fastest candidates are re-run on seeds 1–5. Finishes and time determine the mean-finish-time score; failures/timeouts count against the result. The leaderboard ranks score, then seeds finished, then submission time. A high speed that only finishes 1/5 is not a better policy than a slightly slower 5/5 finisher.</p>
+      </details>
+    </section>
+
+    <section class="card" id="troubleshoot">
+      <span class="tag">If something goes wrong</span>
+      <h2>Common snags and safe next steps</h2>
+      <details>
+        <summary>“Model/repo not found” while downloading</summary>
+        <p>Use the checkpoint repo from the training log’s <code>[ckpt] checkpoints -&gt;</code> line. The task ID <code>Mjlab-Sprint2m-MicroDuck</code> is not a Hub repo. The job ID is only for the Job page and inspection.</p>
+      </details>
+      <details>
+        <summary>“already carries policy.onnx” when publishing</summary>
+        <p>The target repo already has a policy. Prefer publishing to a new repo name. If overwriting is intentional, add <code>--force</code>; check repo name and chosen checkpoint before doing so.</p>
+      </details>
+      <details>
+        <summary>The cloud job completed but there is no local logs folder</summary>
+        <p>Cloud job checkpoints live in its Hub checkpoint repo, not automatically in your local workspace. Download that repo with <code>uv run hf download &lt;checkpoint-repo-id&gt; --local-dir logs/rsl_rl</code>.</p>
+      </details>
+      <details>
+        <summary>The best checkpoint is earlier than the last one</summary>
+        <p>Normal. PPO updates are noisy and checkpoint performance can regress. Score the saved checkpoints rather than equating “latest” with “best.”</p>
+      </details>
+      <details>
+        <summary>All local Arena tests pass, but the official score differs</summary>
+        <p>Local machine architecture and simulation details can move timings. Treat local runs as a screening tool, compare policies under the same local evaluator, and use the official Arena entry as final confirmation.</p>
+      </details>
+      <details>
+        <summary>Terminal output shows a token or secret</summary>
+        <p>Never paste access tokens, environment secrets or API keys into chat or a public log. Share job IDs and repository IDs only; redact secret values before sharing diagnostic output.</p>
+      </details>
+    </section>
+
+    <section class="card">
+      <span class="tag">Glossary</span>
+      <h2>Words you’ll see in logs</h2>
+      <div class="grid-3">
+        <div><h3>Observation</h3><p>Numbers describing the robot state and command.</p></div>
+        <div><h3>Action</h3><p>The actor’s 14 joint-position targets for one control instant.</p></div>
+        <div><h3>Reward</h3><p>Training feedback; it is not the leaderboard score.</p></div>
+        <div><h3>Checkpoint</h3><p>A saved snapshot of network weights partway through learning.</p></div>
+        <div><h3>Seed</h3><p>One reproducible set of random start and actuator conditions.</p></div>
+        <div><h3>5/5</h3><p>The policy finishes all five scored seed trials at the selected command.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Measurements: local evaluation of <code>policy.onnx-2</code>, run ID <code>01M53AET1E36WN5N1F8RY2</code>, trace seed 3, plus the checkpoint scores reported for your training run. This page distinguishes measured results from explanatory diagrams. Training setup details are from this checkout’s Sprint task and the installed Arena evaluator.
+  </footer>
+
+  <script>
+    const replay = [
+      { t: 0.00, d: 0.000, z: 0.131, roll: 11.4, pitch: 12.1, lhp: -1.061, rhp: 0.648, lk: -0.161, rk: 0.524 },
+      { t: 0.10, d: 0.177, z: 0.127, roll: -10.9, pitch: 12.6, lhp: -0.989, rhp: 0.615, lk: -0.687, rk: 0.389 },
+      { t: 0.20, d: 0.376, z: 0.143, roll: 12.6, pitch: 9.4, lhp: -0.605, rhp: 1.100, lk: -1.132, rk: 0.017 },
+      { t: 0.30, d: 0.593, z: 0.139, roll: 15.4, pitch: 12.0, lhp: -1.478, rhp: 0.385, lk: -0.313, rk: 0.814 },
+      { t: 0.40, d: 0.820, z: 0.133, roll: -11.4, pitch: 14.3, lhp: -0.997, rhp: 0.858, lk: -1.077, rk: 0.323 },
+      { t: 0.50, d: 1.060, z: 0.140, roll: 16.5, pitch: 10.9, lhp: -0.704, rhp: 1.125, lk: -1.183, rk: 0.171 },
+      { t: 0.60, d: 1.309, z: 0.140, roll: 4.0, pitch: 20.9, lhp: -1.478, rhp: 0.506, lk: -0.373, rk: 0.914 },
+      { t: 0.70, d: 1.576, z: 0.132, roll: -22.3, pitch: 34.1, lhp: -0.898, rhp: 1.310, lk: -1.146, rk: 0.228 },
+      { t: 0.80, d: 1.863, z: 0.119, roll: -32.6, pitch: 65.2, lhp: -0.538, rhp: 1.283, lk: -1.211, rk: 0.851 },
+      { t: 0.84, d: 1.970, z: 0.128, roll: -77.1, pitch: 61.8, lhp: -0.498, rhp: 1.445, lk: -0.706, rk: 1.200 }
+    ];
+    const sweep = [
+      [0.20, "fall", 1.87], [0.25, "fall", 1.47], [0.30, "fall", 1.39],
+      [0.35, "finish", 0.92], [0.40, "fall", 1.37], [0.45, "fall", 1.83],
+      [0.50, "fall", 1.79], [0.55, "fall", 1.58], [0.60, "fall", 1.53],
+      [0.65, "finish", 0.94], [0.70, "finish", 0.94], [0.75, "fall", 1.97],
+      [0.80, "fall", 1.87], [0.85, "fall", 1.96], [0.90, "fall", 1.71],
+      [0.95, "finish", 0.88], [1.00, "finish", 0.88], [1.05, "finish", 0.90],
+      [1.10, "finish", 0.88], [1.15, "finish", 0.86], [1.20, "finish", 0.88]
+    ];
+    const slider = document.getElementById("frameSlider");
+    const button = document.getElementById("playButton");
+    let timer = null;
+
+    function renderFrame(index) {
+      const p = replay[Math.max(0, Math.min(replay.length - 1, index))];
+      const x = 58 + Math.max(0, Math.min(2, p.d)) / 2 * 804;
+      document.getElementById("duck").setAttribute("transform", `translate(${x.toFixed(1)} 88)`);
+      document.getElementById("progressLine").setAttribute("x2", x.toFixed(1));
+      document.getElementById("laneTime").textContent = `${p.t.toFixed(2)} s · ${p.d.toFixed(2)} m`;
+      document.getElementById("timeValue").textContent = `${p.t.toFixed(2)} s`;
+      document.getElementById("distanceValue").textContent = `${p.d.toFixed(3)} m`;
+      document.getElementById("tiltValue").textContent = `${p.pitch.toFixed(1)}° · ${p.roll.toFixed(1)}°`;
+      const cursorX = 42 + p.t / 0.84 * 292;
+      document.getElementById("plotCursor").setAttribute("x1", cursorX.toFixed(1));
+      document.getElementById("plotCursor").setAttribute("x2", cursorX.toFixed(1));
+      document.getElementById("frameLabel").textContent = `frame ${index + 1} / ${replay.length}`;
+      slider.value = index;
+      for (const [id, val] of [["lhp", p.lhp], ["rhp", p.rhp], ["lk", p.lk], ["rk", p.rk]]) {
+        document.getElementById(id).textContent = `${val.toFixed(3)} rad`;
+        const pct = Math.min(100, Math.abs(val) / 1.6 * 100);
+        document.getElementById(`${id}Bar`).style.width = `${pct}%`;
+      }
+    }
+    document.getElementById("leftHipPlot").setAttribute("points", replay.map(p =>
+      `${(42 + p.t / 0.84 * 292).toFixed(1)},${(98 - p.lhp / 1.5 * 63).toFixed(1)}`
+    ).join(" "));
+    document.getElementById("rightHipPlot").setAttribute("points", replay.map(p =>
+      `${(42 + p.t / 0.84 * 292).toFixed(1)},${(98 - p.rhp / 1.5 * 63).toFixed(1)}`
+    ).join(" "));
+    slider.max = replay.length - 1;
+    slider.addEventListener("input", () => {
+      if (timer) { clearInterval(timer); timer = null; button.textContent = "▶ Play replay"; }
+      renderFrame(Number(slider.value));
+    });
+    button.addEventListener("click", () => {
+      if (timer) {
+        clearInterval(timer); timer = null; button.textContent = "▶ Play replay";
+        return;
+      }
+      let i = Number(slider.value);
+      if (i >= replay.length - 1) i = 0;
+      button.textContent = "❚❚ Pause";
+      renderFrame(i);
+      timer = setInterval(() => {
+        if (i >= replay.length - 1) {
+          clearInterval(timer); timer = null; button.textContent = "▶ Replay again";
+          return;
+        }
+        renderFrame(++i);
+      }, 420);
+    });
+    const list = document.getElementById("speedSweep");
+    for (const [vx, status, value] of sweep) {
+      const row = document.createElement("div");
+      row.className = "speed-row";
+      const width = status === "finish" ? Math.max(5, (1.1 - value) / 0.4 * 100) : Math.max(5, value / 2 * 100);
+      row.innerHTML = `<span class="speed">${vx.toFixed(2)} m/s</span><div class="bar-bg"><div class="bar ${status}" style="width:${Math.min(100, width)}%"></div></div><span class="result ${status === "finish" ? "win" : "fail"}">${status === "finish" ? `${value.toFixed(2)} s` : `fall · ${value.toFixed(2)} m`}</span>`;
+      list.appendChild(row);
+    }
+    renderFrame(0);
+  </script>
+</body>
+</html>

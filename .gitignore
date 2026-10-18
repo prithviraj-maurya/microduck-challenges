@@ -5,3 +5,10 @@ __pycache__/
 publish-*/
 wandb/
 *.onnx
+policies/
+
+# macOS metadata
+.DS_Store
+._*
+.AppleDouble
+.LSOverride

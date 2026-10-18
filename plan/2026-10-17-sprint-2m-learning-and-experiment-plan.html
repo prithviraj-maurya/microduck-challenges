@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f4ef">
+  <title>MicroDuck Sprint Lab — Plan · 17 Oct 2026</title>
+  <style>
+    :root {
+      --paper: #f6f4ef; --card: #fffefa; --ink: #202522; --muted: #727873;
+      --line: #e7e5dc; --green: #235c47; --green-soft: #e6f1e9; --lime: #d6ed9b;
+      --blue: #e9f0fa; --blue-ink: #35567a; --amber: #fbf0d7; --amber-ink: #805c18;
+      --rose: #f8e9e5; --rose-ink: #965447; --shadow: 0 12px 34px #26372b0c;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.65 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    a { color: var(--green); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    code { font-size: .91em; background: #f0efe8; border-radius: 5px; padding: .12em .38em; }
+    .shell { max-width: 1180px; margin: 0 auto; padding: 28px 26px 72px; }
+    .topline { display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
+    .brand { display:flex; align-items:center; gap:9px; font-weight:750; color:var(--green); }
+    .duck { display:grid; place-items:center; width:30px; height:30px; background:var(--lime); border-radius:10px; font-size:18px; }
+    .hero { position:relative; overflow:hidden; margin:24px 0 22px; padding:48px 48px 42px; border-radius:24px; color:#f5f7ef; background:linear-gradient(118deg,#173c32 0%,#235c47 62%,#47745b 100%); box-shadow:var(--shadow); }
+    .hero:after { content:""; position:absolute; width:350px; height:350px; border:1px solid #ffffff19; border-radius:50%; right:-75px; top:-145px; box-shadow:0 0 0 36px #ffffff08,0 0 0 74px #ffffff06; }
+    .eyebrow { display:inline-flex; align-items:center; gap:8px; color:#d5ebc3; font-size:12px; font-weight:700; letter-spacing:.13em; text-transform:uppercase; }
+    h1 { max-width:720px; margin:14px 0 12px; font-size:clamp(36px,5vw,58px); line-height:1.05; letter-spacing:-.045em; }
+    .hero p { max-width:660px; margin:0; color:#e0e9df; font-size:17px; }
+    .hero-meta { display:flex; flex-wrap:wrap; gap:9px; margin-top:27px; }
+    .pill { padding:6px 11px; border:1px solid #ffffff36; border-radius:999px; color:#f6f8ef; background:#ffffff0d; font-size:12px; }
+    .grid { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(260px,.85fr); gap:20px; align-items:start; }
+    .stack { display:grid; gap:18px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:23px 25px; box-shadow:var(--shadow); }
+    .card h2 { display:flex; gap:10px; align-items:center; margin:0 0 13px; font-size:20px; letter-spacing:-.02em; }
+    .card h3 { margin:17px 0 7px; font-size:15px; }
+    .icon { display:grid; place-items:center; width:29px; height:29px; flex:none; background:var(--green-soft); border-radius:9px; font-size:15px; }
+    p { margin:8px 0; } .muted { color:var(--muted); }
+    .callout { padding:13px 15px; margin:14px 0; border-radius:11px; background:var(--green-soft); color:#284b39; }
+    .callout.amber { background:var(--amber); color:var(--amber-ink); }
+    .callout.blue { background:var(--blue); color:var(--blue-ink); }
+    .callout.rose { background:var(--rose); color:var(--rose-ink); }
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:15px 0 3px; }
+    .stat { padding:13px 12px; border:1px solid var(--line); border-radius:12px; background:#fff; }
+    .stat b { display:block; font-size:20px; line-height:1.25; letter-spacing:-.03em; }
+    .stat span { display:block; margin-top:4px; color:var(--muted); font-size:11px; }
+    .map { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .map-item { padding:13px; border:1px solid var(--line); border-radius:12px; }
+    .map-item strong { display:block; margin-bottom:3px; color:var(--green); font-size:13px; }
+    .map-item span { color:var(--muted); font-size:12px; }
+    .phases { display:grid; gap:0; }
+    .phase { position:relative; display:grid; grid-template-columns:47px 1fr; gap:13px; padding:8px 0 21px; }
+    .phase:not(:last-child):before { content:""; position:absolute; left:17px; top:44px; bottom:0; width:1px; background:#d9e2d5; }
+    .num { z-index:1; display:grid; place-items:center; width:36px; height:36px; border-radius:12px; color:var(--green); background:var(--green-soft); font-weight:800; }
+    .phase h3 { margin:2px 0 4px; }
+    .phase p { margin:4px 0; color:var(--muted); font-size:13px; }
+    ul, ol { padding-left:21px; } li { padding:2px 0; }
+    .checklist { list-style:none; padding:0; margin:10px 0 0; }
+    .checklist li { display:flex; align-items:flex-start; gap:10px; padding:7px 0; }
+    input[type=checkbox] { margin-top:5px; accent-color:var(--green); width:15px; height:15px; }
+    pre { overflow-x:auto; white-space:pre-wrap; overflow-wrap:anywhere; padding:15px; border-radius:11px; background:#202b26; color:#e8f1e7; font-size:12px; line-height:1.6; }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th,td { padding:10px 9px; text-align:left; vertical-align:top; border-bottom:1px solid var(--line); }
+    th { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+    td:first-child { font-weight:700; white-space:nowrap; }
+    .badge { display:inline-block; padding:3px 8px; border-radius:999px; font-size:11px; font-weight:700; background:var(--blue); color:var(--blue-ink); }
+    .badge.good { background:var(--green-soft); color:var(--green); }
+    .badge.wait { background:var(--amber); color:var(--amber-ink); }
+    .side-note { color:var(--muted); font-size:13px; }
+    details { border-top:1px solid var(--line); padding:11px 0; }
+    summary { cursor:pointer; font-weight:700; }
+    .footer { padding:24px 4px 0; color:var(--muted); font-size:12px; text-align:center; }
+    @media(max-width:820px) { .grid { grid-template-columns:1fr; } .hero { padding:35px 27px; } }
+    @media(max-width:520px) { .shell { padding:17px 13px 45px; } .topline span:last-child { display:none; } .card { padding:19px; } .stats { grid-template-columns:1fr; } .map { grid-template-columns:1fr; } }
+    @media print { body { background:white; } .shell { max-width:none; padding:0; } .hero,.card { box-shadow:none; break-inside:avoid; } .hero { print-color-adjust:exact; } a { color:inherit; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topline">
+      <div class="brand"><span class="duck">🦆</span> MicroDuck · Sprint Lab</div>
+      <span>Learning plan / 17 October 2026</span>
+    </div>
+
+    <header class="hero">
+      <div class="eyebrow">🏁 2 m sprint · experiment roadmap</div>
+      <h1>Train smarter.<br>Learn every run.</h1>
+      <p>A hands-on plan to understand this repo, establish a trustworthy baseline, and improve the duck one evidence-backed experiment at a time. You write the changes and run the experiments; AI helps explain, inspect, and suggest.</p>
+      <div class="hero-meta"><span class="pill">Current best documented: 5.136 s · 5/5</span><span class="pill">Goal 1: reliable finishes</span><span class="pill">Goal 2: lower time</span><span class="pill">No changes or runs started</span></div>
+    </header>
+
+    <section class="grid">
+      <div class="stack">
+        <article class="card">
+          <h2><span class="icon">🎯</span> The north star</h2>
+          <p>The Arena asks the policy to walk a flat 2 m lane as fast as possible. It sweeps forward commands from <b>0.20 to 1.20 m/s</b>, then repeats its three fastest candidates across five seeds. A fall or timeout costs 50 seconds.</p>
+          <div class="callout"><b>Scoring priority:</b> first finish 5/5. Then lower the mean time. A fast policy that falls is worse than a slightly slower policy that finishes every seed.</div>
+          <div class="stats">
+            <div class="stat"><b>5.136 s</b><span>Best checkpoint documented locally</span></div>
+            <div class="stat"><b>5 / 5</b><span>Seeds finished at checkpoint 1500</span></div>
+            <div class="stat"><b>4.892 s</b><span>Local reference score cited by sprint guide</span></div>
+          </div>
+          <p class="muted">Checkpoint 2999 scored 5.196 s in the walkthrough, so the final checkpoint was not the best. Local scores are useful for comparison; the official Arena result is the final measure.</p>
+        </article>
+
+        <article class="card">
+          <h2><span class="icon">🗺️</span> Repo map: follow the training path</h2>
+          <div class="map">
+            <div class="map-item"><strong><code>sprint_2m/AGENTS.md</code></strong><span>Challenge rules, workflow, known wins and failed approaches. Start here before sprint work.</span></div>
+            <div class="map-item"><strong><code>challenge.toml</code></strong><span>Run recipe and three beginner-facing reward knobs.</span></div>
+            <div class="map-item"><strong><code>env.py</code></strong><span>Connects robot, observations, actions, rewards, randomization, curricula and PPO configuration.</span></div>
+            <div class="map-item"><strong><code>tasks.py</code></strong><span>Registers the sprint environment and runner under the task name.</span></div>
+            <div class="map-item"><strong><code>mjlab-microduck</code></strong><span>External package: robot definition and many reward functions.</span></div>
+            <div class="map-item"><strong><code>docs/TRAINING_WALKTHROUGH.md</code></strong><span>Prior job, checkpoints, local scores, and export/publish commands.</span></div>
+          </div>
+          <h3>The mental model</h3>
+          <p><b>Observation (61 values)</b> → policy → <b>14 joint targets</b> → simulated robot → reward → PPO update → checkpoint. An ONNX export packages a selected policy for the Arena. PPO is the update method; reward terms define what behavior gets reinforced.</p>
+          <div class="callout blue"><b>Learning prompt:</b> while reading <code>env.py</code>, follow one concrete signal end to end. For example, where is forward speed observed, where is speed tracking rewarded, and where would you see that reward in TensorBoard?</div>
+        </article>
+
+        <article class="card">
+          <h2><span class="icon">🧭</span> Next steps</h2>
+          <div class="phases">
+            <div class="phase"><div class="num">01</div><div><h3>Inspect the baseline artifact</h3><p>Score <code>policies/policy_20261017.onnx</code> with the Arena evaluator. Record finish count, time, and command speed. This tells us what the newest file actually does; its score is currently unknown.</p><p><b>Learn:</b> policy/checkpoint distinction, ONNX export, evaluator output.</p></div></div>
+            <div class="phase"><div class="num">02</div><div><h3>Reconstruct the previous run</h3><p>If its checkpoints and TensorBoard logs are available, compare checkpoint 1500 with 2999 and inspect episode length, falls, and reward components. Relate curve changes to the environment curricula around iterations 500–2000.</p><p><b>Learn:</b> a rising total reward is not automatically a faster Arena score.</p></div></div>
+            <div class="phase"><div class="num">03</div><div><h3>Map one code path together</h3><p>Read the sprint guide, then trace task registration in <code>tasks.py</code> and one reward/observation path in <code>env.py</code>. Ask for explanations as you go; no broad code rewrite is needed.</p><p><b>Learn:</b> environment configuration, actor vs critic observations, reward shaping.</p></div></div>
+            <div class="phase"><div class="num">04</div><div><h3>Measure run-to-run variation</h3><p>Before changing code, consider rerunning the unchanged recipe with a different seed, if time and compute budget allow. Compare the best checkpoint and Arena score to the existing baseline.</p><p><b>Learn:</b> stochasticity, seeds, why one run is weak evidence.</p></div></div>
+            <div class="phase"><div class="num">05</div><div><h3>Pick one diagnosis, then one change</h3><p>Use evaluator results to decide whether the issue is falling, speed, or lane drift. Write a one-sentence hypothesis, change one parameter, and compare the same evaluation process.</p><p><b>Learn:</b> controlled experiments and causal reasoning.</p></div></div>
+            <div class="phase"><div class="num">06</div><div><h3>Choose by measured score</h3><p>Evaluate checkpoints as they arrive, retain the best 5/5 result, and compare against the reference. Keep a short experiment log so every run informs the next choice.</p><p><b>Learn:</b> checkpoint selection and sim-to-Arena limits.</p></div></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2><span class="icon">▶️</span> Step 1 · score the policy we have</h2>
+          <p>Run from the repository root. This is an evaluation of the existing ONNX file; it does not train or publish anything.</p>
+          <pre>uv run --group workshop arena score policies/policy_20261017.onnx --event sprint-2m</pre>
+          <p>Save the reported score, number of seeds finished, and selected command speed in the experiment log below. If the command reports a missing package, use the repo’s documented setup and ask before starting any expensive training.</p>
+          <div class="callout amber"><b>Keep comparison fair:</b> use the same evaluator and machine for local policy comparisons. Physics can drift across CPU architectures, so treat the Space score as the official result.</div>
+        </article>
+
+        <article class="card">
+          <h2><span class="icon">🧪</span> Experiment rules of the road</h2>
+          <ol>
+            <li><b>Write the question first:</b> what evidence says this is the problem?</li>
+            <li><b>State a prediction:</b> “If I change X, I expect Y because Z.”</li>
+            <li><b>Change one thing</b> unless there is a clear reason to test a deliberate combination.</li>
+            <li><b>Keep a baseline and name runs clearly.</b> Record code commit, seed, settings, and checkpoint.</li>
+            <li><b>Judge with the Arena evaluator.</b> Curves help diagnose; they are not the competition score.</li>
+            <li><b>Stop a collapsed run</b> instead of spending compute on a policy that is not recovering.</li>
+          </ol>
+          <div class="callout rose"><b>Known caution:</b> the sprint guide says lane-hold reward at the previously tried settings made walking worse, and tightening head-pose tracking once stopped the gait. Treat those as evidence against repeating those exact changes without a new hypothesis.</div>
+        </article>
+
+        <article class="card">
+          <h2><span class="icon">📝</span> Experiment log template</h2>
+          <p class="muted">Duplicate this block for each run. Keep the hypothesis, actual change, and result together.</p>
+          <pre>Run name:
+Question / hypothesis:
+One change (file + old → new):
+Why this change:
+Seed / envs / iterations:
+Best checkpoint:
+Arena local score / finishes / command speed:
+TensorBoard clues (falls, episode length, reward terms):
+What happened vs prediction:
+Next question:</pre>
+        </article>
+      </div>
+
+      <aside class="stack">
+        <article class="card">
+          <h2><span class="icon">✅</span> Start here</h2>
+          <ul class="checklist">
+            <li><input type="checkbox"><span>Read sprint <code>AGENTS.md</code> and this plan.</span></li>
+            <li><input type="checkbox"><span>Score the October 17 ONNX policy; note its result.</span></li>
+            <li><input type="checkbox"><span>Locate the previous run’s logs/checkpoints, if available.</span></li>
+            <li><input type="checkbox"><span>Trace observation → action → reward in <code>env.py</code>.</span></li>
+            <li><input type="checkbox"><span>Agree on compute budget before the next training run.</span></li>
+          </ul>
+        </article>
+        <article class="card">
+          <h2><span class="icon">🔬</span> The three starter knobs</h2>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Knob</th><th>Default</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td><code>forward_reward</code></td><td>2.0</td><td>Track commanded forward speed</td></tr>
+              <tr><td><code>upright_reward</code></td><td>2.0</td><td>Keep the trunk upright</td></tr>
+              <tr><td><code>step_reward</code></td><td>3.0</td><td>Encourage foot lift / gait</td></tr>
+            </tbody>
+          </table></div>
+          <p class="side-note">Values live in <code>challenge.toml</code>, within the min/max ranges specified there. Don’t pick a knob change until the baseline shows a problem it could plausibly address.</p>
+        </article>
+        <article class="card">
+          <h2><span class="icon">📈</span> Read curves carefully</h2>
+          <p><b>Healthy clues:</b> episode length trends toward a full episode; falls trend down; speed-tracking reward improves.</p>
+          <p><b>Warning clues:</b> total reward rises while speed tracking stays flat; a sharp change near a curriculum stage; NaN terminations.</p>
+          <p class="side-note">A reward curve answers “is training behavior changing?” The Arena evaluator answers “does this policy finish quickly under the event rules?” We need both kinds of evidence.</p>
+        </article>
+        <article class="card">
+          <h2><span class="icon">🏆</span> Board & reference</h2>
+          <p>When network access is available, check the current event board before setting a placement goal:</p>
+          <pre>curl -s https://pollen-robotics-microduck-arena.hf.space/api/events/sprint-2m/leaderboard</pre>
+          <p class="side-note">The board changes over time. The repo’s sprint guide gives this endpoint; the live values have not been captured in this plan. The Pollen reference policy’s Hub card describes its Arena checkpoint as 1000, illustrating why the scored checkpoint matters more than the final iteration.</p>
+          <p><a href="https://huggingface.co/spaces/pollen-robotics/microduck-arena">Open MicroDuck Arena ↗</a></p>
+        </article>
+        <article class="card">
+          <h2><span class="icon">🧠</span> Concepts to learn</h2>
+          <details><summary>Reward shaping</summary><p class="side-note">Rewards are training signals, not the leaderboard metric. If terms compete, a policy may optimize an easy proxy instead of sprint time.</p></details>
+          <details><summary>PPO and iterations</summary><p class="side-note">Each iteration gathers simulated experience and updates the policy. More iterations do not guarantee steady improvement.</p></details>
+          <details><summary>Seed and variance</summary><p class="side-note">A seed controls random choices, but GPU simulation and training may still vary. Repeats help tell a robust effect from a lucky run.</p></details>
+          <details><summary>Domain randomization</summary><p class="side-note">Training varies selected physical properties so a policy can handle variation. Randomization should match what the Arena actually simulates.</p></details>
+          <details><summary>Checkpoint vs export</summary><p class="side-note">A checkpoint is a training snapshot. ONNX is the portable inference policy the Arena consumes; exporting can include observation normalization.</p></details>
+        </article>
+        <article class="card">
+          <h2><span class="icon">🤝</span> How we’ll work</h2>
+          <p><span class="badge good">You</span> choose the experiment, edit code, run jobs, and decide what to publish.</p>
+          <p><span class="badge">AI</span> explains code and RL ideas, reviews a proposed diff, helps form hypotheses, and reads run results with you.</p>
+          <p><span class="badge wait">Before training</span> agree on the goal, number of runs, and local GPU vs paid cloud budget.</p>
+          <p class="side-note">Publishing and Arena entry are separate decisions. No job, upload, or entry is part of this plan.</p>
+        </article>
+      </aside>
+    </section>
+    <footer class="footer">Built for learning by doing · Based on the sprint guide and training walkthrough in this checkout · 17 October 2026</footer>
+  </main>
+</body>
+</html>
