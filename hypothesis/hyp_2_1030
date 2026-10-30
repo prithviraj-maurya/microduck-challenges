@@ -1,0 +1,11 @@
+Hypothesis / one changed variable:
+Baseline and success rule:
+Commit / config / training seed:
+HF job ID / actual cost:
+Best checkpoint / command speed:
+Local score / finished seeds:
+Per-seed times or failures / replay seed:
+Training curves: episode length, falls, XY and yaw error, reward-term notes:
+Official Arena score / finishes / rank / policy URL (if submitted):
+Conclusion: supported / refuted / inconclusive, and why:
+Next single change or repeat:

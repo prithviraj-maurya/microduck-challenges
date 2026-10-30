@@ -4,6 +4,9 @@ This guide follows the Hugging Face Jobs training run and checkpoint scores from
 checkout. It explains what the challenge asks the duck to do, how training produces a
 policy, how to download and compare checkpoints, and how to publish one.
 
+For a reusable command reference grouped by workflow stage, see
+[`SPRINT_2M_COMMAND_REFERENCE.md`](SPRINT_2M_COMMAND_REFERENCE.md).
+
 ## Your run at a glance
 
 | Item | Value |
@@ -144,13 +147,14 @@ That ONNX is the job's auto-export, not necessarily the best checkpoint. To scor
 particular checkpoint, export it locally and run the Arena evaluator:
 
 ```bash
-run=logs/rsl_rl/sprint_2m/2026-10-16_18-25-21_first
+cd publish-evals
+run=../logs/rsl_rl/sprint_2m/2026-10-16_18-25-21_first
 
 uv run publish --run "$run" --checkpoint 1500 \
   --repo local/microduck-eval --dry-run --allow-dirty
 
 uv run --group workshop arena score \
-  publish-eval/policy.onnx --event sprint-2m
+publish-eval/policy.onnx --event sprint-2m
 ```
 
 `--dry-run` prepares the ONNX and supporting files locally; it does not publish to

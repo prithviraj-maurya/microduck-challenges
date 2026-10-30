@@ -165,7 +165,8 @@ The curves are not the score. Judge each checkpoint with the Arena's own evaluat
 - Otherwise:
 
   ```bash
-  run=logs/rsl_rl/sprint_2m/<run>
+  cd publish-evals
+  run=../logs/rsl_rl/sprint_2m/<run>
   for n in $(ls $run | sed -n 's/^model_\([0-9]*\)\.pt$/\1/p' | sort -n); do
     uv run publish --run $run --checkpoint $n --repo local/microduck-eval --dry-run --allow-dirty >/dev/null 2>&1 &&
     echo "checkpoint $n: $(uv run --group workshop arena score publish-eval/policy.onnx --event sprint-2m | grep -E '^(scored at|score )' | paste -sd' ' -)"
@@ -173,7 +174,7 @@ The curves are not the score. Judge each checkpoint with the Arena's own evaluat
   ```
 
   `--dry-run` exports exactly as the real publish (the observation normalizer baked in) into
-  `publish-eval/`, and publishes nothing.
+  `publish-eval/` under `publish-evals/`, and publishes nothing.
 
 Pick by score: 5/5 finishes first, then the lowest time. The best checkpoint is often not the last.
 Scores on this machine are indicative: only the Space times an entry, and simulations on different

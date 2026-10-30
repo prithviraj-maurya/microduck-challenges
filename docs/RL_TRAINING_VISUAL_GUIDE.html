@@ -697,7 +697,8 @@ uv run hf download "$CKPT_REPO" --local-dir logs/rsl_rl
 find logs/rsl_rl/sprint_2m -type f -name 'model_*.pt'</pre>
         </div>
         <div class="step"><strong>Export and score candidate checkpoints:</strong> the Arena’s sweep scores the policy across speeds, then evaluates finalists on 5 seeds.
-          <pre>RUN_DIR=logs/rsl_rl/sprint_2m/2026-10-16_18-25-21_first
+          <pre>cd publish-evals
+RUN_DIR=../logs/rsl_rl/sprint_2m/2026-10-16_18-25-21_first
 for N in 250 500 750 1000 1250 1500 1750 2000 2250 2500 2750 2999; do
   echo "=== checkpoint $N ==="
   uv run publish --run "$RUN_DIR" --checkpoint "$N" \

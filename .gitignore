@@ -3,6 +3,7 @@ logs/
 __pycache__/
 *.egg-info/
 publish-*/
+/publish-evals/
 wandb/
 *.onnx
 policies/
