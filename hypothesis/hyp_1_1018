@@ -108,3 +108,46 @@ Compare the best result with:
 - **A sharp curve drop around a curriculum change:** check whether the evaluator score also worsened there; that helps distinguish a training transition from a useful checkpoint.
 
 Write down the hypothesis, commit hash, seed, best checkpoint, evaluator score, finishes, command speed, and what the curves showed. Then decide whether to keep the change as a useful finding or try the next single-variable hypothesis. Do not publish or enter a policy without explicit approval.
+
+
+### Learnings
+
+## What the experiments show so far
+
+The clearest result is that increasing `forward_reward` from **2.0 to 2.5** appears to have helped locally. The control’s best reported result was **5.048 s, 5/5, at 0.55 m/s**. With `forward_reward = 2.5`, both training runs found a faster checkpoint near iteration 1000:
+
+| Training run | Best checkpoint | Local score | Finishes | Winning command |
+|---|---:|---:|---:|---:|
+| `forward25-seed2` | 1000 | 3.884 s | 5/5 | 0.70 m/s |
+| `forward25-seed3` | 1000 | 3.864 s | 5/5 | 0.65 m/s |
+
+That’s a promising repeat across two **training seeds**. The 0.020 s difference between those runs is tiny; treat them as essentially tied. These are local evaluator results, so they support the hypothesis but don’t guarantee an improvement on the HF leaderboard.
+
+### Checkpoint selection matters
+
+Both runs peaked around checkpoint 1000, and their later checkpoints were slower:
+
+- Seed 2: 3.884 s at checkpoint 1000; 4.220 s at 2999.
+- Seed 3: 3.864 s at checkpoint 1000; 4.332 s at 2999.
+
+So “train longer” did not mean “get a better policy” in these runs. Evaluate checkpoints and select the best one; don’t assume the final checkpoint wins.
+
+### What the saved curves add
+
+I read the TensorBoard event files directly. The patterns suggest:
+
+- **Training survival was generally stable:** episode length stayed around 950–982 out of a 1000-step maximum, and there were no `nan_state` or out-of-terrain terminations at the sampled points.
+- **Fall behavior fluctuated:** the `fell_over` curve was not steadily improving. It looked better at some points and worse at others, so it doesn’t explain the evaluator improvement by itself.
+- **The velocity reward curve is not a fair raw comparison:** increasing its configured weight by 25% also scales the logged weighted reward. A higher reward curve alone doesn’t prove better walking.
+- **The direct velocity-error curves improved only modestly:** at the end, XY error was about 1.040 for the control, 1.027 for seed 2, and 1.034 for seed 3. The evaluator improvement is much larger than that metric change, which suggests these training averages don’t fully capture the sprint behavior that determines the score.
+- **Training reward kept rising while evaluator scores worsened after checkpoint 1000.** That’s a useful example of why reward curves are diagnostics, not the competition score.
+
+The two HF jobs used `--no-wandb`, so their plots are in the saved TensorBoard event files rather than W&B. The experiment notes include the sweep and sampled curve values in [SPRINT_2M_EXPERIMENT_FORWARD25.md](/Volumes/sandisk_ssd/projects/microduck_challenges/microduck-challenges/docs/SPRINT_2M_EXPERIMENT_FORWARD25.md).
+
+## How strong is the conclusion?
+
+I’d call the `forward_reward = 2.5` result **promising and repeated locally**, not yet a proven leaderboard improvement. The seed 2 run has clean provenance; the seed 3 run’s provenance says it started with a dirty checkout. The control also has dirty provenance, so keep that limitation in mind when interpreting it as a perfectly controlled comparison.
+
+Also, training seeds 2 and 3 are not the Arena’s evaluation seeds 1–5. The training seed changes randomness during learning; the evaluation seeds test a trained policy under different starts.
+
+Your `hyp_2_1030` file is currently a blank experiment-record template, so there isn’t another completed knob change documented there yet. The next useful step is to choose one new setting, keep the rest fixed, record its commit and seed, then compare the **best 5/5 checkpoint** against the 3.864–3.884 s local baseline.
