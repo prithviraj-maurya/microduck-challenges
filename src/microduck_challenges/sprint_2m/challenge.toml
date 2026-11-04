@@ -11,7 +11,7 @@ seed           = 3
 
 [params.forward_reward]
 label = "Follow the speed order"
-value = 2.5
+value = 3.0
 min   = 0.5
 max   = 5.0
 
