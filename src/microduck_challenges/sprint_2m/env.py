@@ -31,7 +31,7 @@ from copy import deepcopy
 NUM_STEPS_PER_ENV = 24
 
 # Symmetry
-ENABLE_SYMMETRY = False
+ENABLE_SYMMETRY = True  # hyp 4: mirror loss, a left/right-mirrored policy has no built-in turn
 
 # Domain randomization toggles
 ENABLE_COM_RANDOMIZATION = True
@@ -124,6 +124,8 @@ from mjlab_microduck import challenge
 from mjlab_microduck.robot.microduck_constants import MICRODUCK_WALK_ROBOT_CFG
 from mjlab_microduck.tasks import mdp as microduck_mdp
 from mjlab_microduck.tasks.symmetry import PpoWithSymmetryCfg, SYMMETRY_CFG
+
+from . import rewards as sprint_rewards
 
 
 def heading_error(env: ManagerBasedRlEnv) -> torch.Tensor:
@@ -251,6 +253,13 @@ def make_env_cfg(
     # affordable.
     cfg.rewards["upright"].weight = knobs["upright_reward"]
     cfg.rewards["upright"].params["std"] = math.sqrt(0.05)
+    # hyp 4: lean into the run. As lane speed goes 0.3 → 0.8 m/s the trunk is
+    # pulled to a 12° forward lean and leaning past it gets cheap (std² 0.05 →
+    # 1.0). Roll and backward lean keep std² 0.05.
+    cfg.rewards["upright"].func = sprint_rewards.upright_lean
+    cfg.rewards["upright"].params.update(
+        {"lean_std": 1.0, "speed_lo": 0.3, "speed_hi": 0.8, "lean_target_deg": 12.0}
+    )
 
     # Foot-specific configurations. In mjlab 1.3.0 foot_swing_height is fully
     # sensor-driven (no asset_cfg); only foot_clearance/foot_slip still carry an
@@ -290,9 +299,14 @@ def make_env_cfg(
     cfg.rewards["body_ang_vel"].weight = -0.05
     cfg.rewards["angular_momentum"].weight = -0.02
 
-    # Velocity tracking rewards
+    # Velocity tracking rewards. hyp 4: forward speed is tracked one-sided.
+    # Falling short of the command costs as before; going faster costs nothing,
+    # so the top command (1.2 m/s) no longer caps the duck.
+    cfg.rewards["track_linear_velocity"].func = sprint_rewards.track_linear_velocity_at_least
+    cfg.rewards["track_linear_velocity"].params = {
+        "std": math.sqrt(0.1), "command_name": "twist", "command_threshold": 0.01,
+    }
     cfg.rewards["track_linear_velocity"].weight = knobs["forward_reward"]
-    cfg.rewards["track_linear_velocity"].params["std"] = math.sqrt(0.1)
     cfg.rewards["track_angular_velocity"].weight = 2.0
     cfg.rewards["track_angular_velocity"].params["std"] = math.sqrt(0.5)
 
@@ -310,8 +324,26 @@ def make_env_cfg(
         params={"std": 0.4, "asset_cfg": SceneEntityCfg("robot")},
     )
 
+    # hyp 4: price sideways speed across the lane (yawing or crabbing). Fast
+    # gaits drift into the Arena's walls (±0.4 m), which training does not have.
+    # std 0.15 m/s keeps 64% of the term at 0.1 m/s across, 17% at 0.2.
+    cfg.rewards["lane_drift"] = RewardTermCfg(
+        func=sprint_rewards.lane_drift,
+        weight=2.0,
+        params={"std": 0.15, "command_name": "twist", "command_threshold": 0.01},
+    )
+
+    # hyp 4: speed paid for itself. The tracking bell curve (std² 0.1) pays ~0
+    # to a duck 0.6 m/s short of its command, so nothing pulls it faster.
+    # lane_progress pays linearly for speed down the lane, up to v_ref.
+    cfg.rewards["lane_progress"] = RewardTermCfg(
+        func=sprint_rewards.lane_progress,
+        weight=10.0,
+        params={"v_ref": 2.0, "command_name": "twist", "command_threshold": 0.01},
+    )
+
     # Action smoothness: stage-0 value; the action_rate_weight curriculum below
-    # ramps it -0.1 → -1.0 by iter 1500.
+    # ramps it -0.1 → -0.3 by iter 750.
     cfg.rewards["action_rate_l2"].weight = -0.1
 
     cfg.rewards["foot_clearance"].params["command_threshold"] = 0.01
@@ -667,10 +699,13 @@ def make_env_cfg(
     # std=0.5 with per-joint Gaussian (see head_pose_tracking in mdp.py). Final
     # reward is the mean over 4 joints, so partial tracking is partial reward
     # (no all-or-nothing).
+    # hyp 4: as lane speed goes 0.3 → 0.8 m/s the head's target moves to neck
+    # −1.0 rad, head +0.5 rad from the command: carried forward, a counterweight.
     cfg.rewards["head_pose_tracking"] = RewardTermCfg(
-        func=microduck_mdp.head_pose_tracking,
+        func=sprint_rewards.head_pose_tracking_at_speed,
         weight=2.0,
-        params={"command_name": "head_pose", "std": 0.5},
+        params={"command_name": "head_pose", "std": 0.5, "fast_std": 0.5,
+                "fast_offset": (-1.0, 0.5, 0.0, 0.0), "speed_lo": 0.3, "speed_hi": 0.8},
     )
     # body_pose: infra kept intact but DISABLED (weight 0) — the obs slot and
     # command stay alive for envs that raise the weight (standup).
@@ -699,9 +734,9 @@ def make_env_cfg(
     # to cancel gravity sag), so price only that: L1 on a 1 s EMA of the error.
     # At the optimum this costs a walking policy nothing.
     cfg.rewards["head_pose_bias"] = RewardTermCfg(
-        func=microduck_mdp.head_pose_bias_penalty,
+        func=sprint_rewards.head_pose_bias_at_rest,  # hyp 4: fades out with speed
         weight=0.0,  # ramped by the head_pose_bias_weight curriculum below
-        params={"command_name": "head_pose", "tau_s": 1.0},
+        params={"command_name": "head_pose", "tau_s": 1.0, "speed_lo": 0.3, "speed_hi": 0.8},
     )
 
     # Terrain: the sprint's lane is flat.
@@ -709,7 +744,8 @@ def make_env_cfg(
     cfg.scene.terrain.terrain_generator = None
 
     # action_rate weight ramp: gentle smoothing while the gait bootstraps, then
-    # tighten to -1.0 by iter 1500.
+    # capped at -0.3 (hyp 4; was -1.0 by iter 1500). Every earlier run scored
+    # best at checkpoint 1000 and slowed as this ramp tightened.
     cfg.curriculum["action_rate_weight"] = CurriculumTermCfg(
         func=microduck_mdp.reward_weight,
         params={
@@ -717,26 +753,19 @@ def make_env_cfg(
             "weight_stages": [
                 {"step": 0, "weight": -0.1},
                 {"step": 500 * NUM_STEPS_PER_ENV, "weight": -0.2},
-                {"step": 750 * NUM_STEPS_PER_ENV, "weight": -0.4},
-                {"step": 1000 * NUM_STEPS_PER_ENV, "weight": -0.6},
-                {"step": 1250 * NUM_STEPS_PER_ENV, "weight": -0.8},
-                {"step": 1500 * NUM_STEPS_PER_ENV, "weight": -1.0},
+                {"step": 750 * NUM_STEPS_PER_ENV, "weight": -0.3},
             ],
         },
     )
 
-    # Gradually increase standing env fraction after walking is established
+    # hyp 4: standing envs held at 2% (was ramped to 25% by iter 2000). The
+    # Arena never commands 0, so that share of training was spent off the race.
     cfg.curriculum["standing_envs"] = CurriculumTermCfg(
         func=microduck_mdp.standing_envs_curriculum,
         params={
             "command_name": "twist",
             "standing_stages": [
                 {"step": 0,           "rel_standing_envs": 0.02},
-                {"step": 500 * 24,    "rel_standing_envs": 0.05},
-                {"step": 750 * 24,    "rel_standing_envs": 0.1},
-                {"step": 1000 * 24,   "rel_standing_envs": 0.15},
-                {"step": 1500 * 24,   "rel_standing_envs": 0.2},
-                {"step": 2000 * 24,   "rel_standing_envs": 0.25},
             ],
         },
     )
@@ -860,7 +889,7 @@ RL_CFG = RslRlOnPolicyRunnerCfg(
     wandb_project="mjlab_microduck",
     experiment_name="sprint_2m",  # logs/rsl_rl/sprint_2m/
     run_name="sprint_2m",
-    save_interval=250,
+    save_interval=100,  # hyp 4: more checkpoints to choose from (scoring one takes 7 s)
     num_steps_per_env=24,
     max_iterations=50_000,
 )
