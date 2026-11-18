@@ -1,7 +1,98 @@
 # Hypothesis 4: pay for speed itself, and stop taxing it
 
-Status: **run finished 2026-11-16, hypothesis supported.** Best checkpoint 2999: 1.232 s, 5/5
-(local); entered on the Arena 2026-11-17 at 1.229 s, 5/5. See the run record at the end.
+Status: **done, supported, entered.** Official Arena score **1.229 s, 5/5 seeds** (entered
+2026-11-17), down from our previous official best of 3.854 s. One run, seed 2, about $1.86.
+
+## Results
+
+| | Before (hyp 2, checkpoint 1000) | After (hyp 4, checkpoint 2999) |
+|---|---:|---:|
+| Official Arena score | 3.854 s (hyp 1 entry) | **1.229 s** |
+| Local Arena score | 3.560 s | 1.232 s |
+| Average speed over the 2 m | 0.56 m/s | 1.62 m/s |
+| Commands it finishes (of 21) | 11 | 21 |
+| Best checkpoint | 1000 (then slower) | 2999 (the last one) |
+
+![Arena time and curves per checkpoint](../docs/figures/hyp4_result_checkpoints.png)
+
+![Command sweep before and after](../docs/figures/hyp4_result_sweep.png)
+
+Policy: <https://huggingface.co/prithviraj-maurya/microduck-lx-seed2-cp2999>
+· Arena entry: <https://huggingface.co/spaces/pollen-robotics/microduck-arena#/r/01M7PQ9JXB63A1FMTZKBAG>
+
+## Conclusion
+
+**Supported on both counts.** The claim was a 5/5 checkpoint at 1.5 s or faster, with the best
+checkpoint after 1500. Every checkpoint from 1500 on was under 1.5 s (except 2600, which fell on
+one seed), and the best was the last one. heyskylark's two seeds scored 1.233 s and 1.263 s; ours
+scored 1.232 s on a third seed and a different machine, so the recipe reproduces.
+
+The diagnosis behind it holds too: what limited the duck was what we paid it for, not the
+robot. The same body, the same observations and the same PPO settings went from 0.56 m/s to
+1.62 m/s once the rewards stopped capping and taxing speed.
+
+What this run does **not** tell us: which of the changes did the most. All of them went in
+together, so our own data cannot split the 2.3 s gain between them. The per-change gains below
+are heyskylark's measurements, not ours.
+
+## What worked, and how
+
+Three things, each visible in our own curves:
+
+**1. Paying for speed directly (`lane_progress`).** The old tracking reward is a bell curve
+around the command, so a duck far below its command earned almost nothing and felt no pull to
+speed up. `lane_progress` pays in a straight line: every extra cm/s down the lane earns more,
+up to 2 m/s. The bottom panel of the first figure shows the result: `Metrics/lane_speed_mean`
+climbs from 0 to 1.15 m/s and is still rising at the end, and the Arena time falls with it.
+(heyskylark measured this term alone at −1.9 s.)
+
+**2. Making "faster than told" free (one-sided tracking).** With the old reward, running faster
+than the command cost reward, so speed was capped at whatever was asked. Now only falling short
+costs. Together with `lane_progress` this changed what the policy *is*: the second figure shows
+it no longer follows the command at all. Whether told 0.20 or 1.20 m/s, it sprints at about
+1.6 m/s. For a race that is the right behaviour. On a real robot that you want to walk slowly,
+it would not be.
+
+**3. Stopping the smoothness tax at −0.3 (was −1.0).** This is what ended the "best at 1000"
+pattern. In hyp 2, `mean_action_acc` kept falling as the `action_rate_l2` weight tightened, from
+0.54 at iteration 1000 to 0.36 at the end, and the race got slower. Here it settles at about 0.9
+once the weight stops at iteration 750, and stays there. The duck keeps the sharp leg movements
+a fast gait needs, so the rest of training goes into getting faster instead of smoother.
+(heyskylark: −0.73 s.)
+
+The other changes (head forward and trunk lean at speed, standing robots held at 2%, mirror
+loss, `lane_drift`) are in the run, but none has its own tell-tale curve in our data that moved
+with the score. Their reported gains are smaller (−0.03 to −0.33 s each).
+
+### Predictions that were wrong
+
+- **`track_linear_velocity` did not rise toward 2.0**; it stayed near 0.5. The likely reason, not
+  checked: only the forward part became one-sided. The sideways and up-down parts of the error
+  are still charged, and a sprinting duck sways and bounces.
+- **`lane_drift_abs_mean` rose instead of falling** (0.28 → 0.43 m/s). It averages the speed
+  across the lane at each instant, so a duck swaying left and right scores high even if it
+  ends up straight. The Arena runs never hit a wall, which suggests sway rather than drift; that
+  is an inference, not checked.
+- **The gap between training and Arena speed** (1.15 m/s in training against 1.62 m/s in the
+  Arena) was not predicted. Training shoves the robots and averages over every robot, including
+  ones that just reset or fell; the Arena has no shoves. Again a likely reason, not measured.
+
+### Lessons for reading curves
+
+1. **Find or build a curve that is nearly the score.** `lane_speed_mean` is plain metres per
+   second down the lane. It was the only training curve that moved with the Arena time all the
+   way. Reward curves (`Episode_Reward/*`) tell you what the policy collects, not how fast it is.
+2. **Check `Curriculum/*` first when a run peaks early.** Both "best at 1000" and its fix came
+   from a schedule, not from the learning itself.
+3. **A rising fall curve is not a stop signal; Arena finishes are.** `fell_over` stayed high and
+   noisy all run, yet 11 of 12 scored checkpoints finished 5/5.
+4. **Score every checkpoint.** Checkpoint 2600 sat between two 1.27 s checkpoints and fell on one
+   seed (11.07 s). A curve would not have shown that.
+
+---
+
+The sections below are the plan as written before the run (2026-11-14), kept as it was so the
+predictions can be checked against the results above.
 
 ## What the first three hypotheses told us
 
@@ -150,7 +241,7 @@ Per-seed times: 1.20, 1.22, 1.22, 1.22, 1.30 s
 Official Arena score / policy URL: 1.229 s, 5/5 at 0.85 m/s (entered 2026-11-17)
   https://huggingface.co/prithviraj-maurya/microduck-lx-seed2-cp2999
   https://huggingface.co/spaces/pollen-robotics/microduck-arena#/r/01M7PQ9JXB63A1FMTZKBAG
-Conclusion: supported. Under 1.5 s from checkpoint 1500 on, and the best checkpoint is the last.
+Conclusion: supported (see Conclusion at the top).
 ```
 
 Local Arena score per checkpoint:
@@ -182,24 +273,15 @@ Curves from the event file (training average over 4096 robots, with shoves):
 | `Metrics/lane_drift_abs_mean` (m/s) | 0.28 | 0.34 | 0.37 | 0.39 | 0.41 | 0.43 |
 | `Episode_Termination/fell_over` | 1.50 | 0.96 | 0.83 | 1.00 | 0.67 | 0.71 |
 
-What the curves say:
+Readings of these curves are under "What worked, and how" at the top.
 
-- `lane_speed_mean` rose through the whole run and the Arena time fell with it. It is the first
-  training curve in this repo that moves with the score.
-- `mean_action_acc` stayed flat near 0.9 after the smoothness weight stopped at −0.3. In the
-  earlier runs it kept falling as the weight went to −1.0, and the duck slowed down.
-- Two predictions in the table above were wrong. `track_linear_velocity` did not rise toward
-  2.0; it stayed near 0.5. `lane_drift_abs_mean` rose instead of falling. Neither stopped the
-  Arena runs from finishing, so read both as "not the curve that matters here"; why they moved
-  that way is not examined.
-- `fell_over` stayed high and noisy, as warned. Checkpoint 2600 is the one place it showed in
-  the Arena (4 of 5 finished). Late checkpoints are not all safe: score each one.
+## Next
 
-## After this run
+At 1.229 s, the next step down is the group of entries between 1.0 and 1.2 s. heyskylark's log
+measures those as running with the head 30 to 80° forward; their cards do not all say how they
+were trained. Before spending anything, study them for free (model cards, and their ONNX
+policies scored and watched locally) to find what they do that this policy does not.
 
-If it lands near 1.25 s, the next step down is the group of entries between 1.0 and 1.2 s,
-which heyskylark's log measures as running with the head 30 to 80° forward; their cards do not
-all say how they were trained. The entries whose cards we read at 0.82 to 0.87 s are not
-learned gaits: they replay action sequences searched against the five official seeds and tumble
-over the line before the 0.3 s fall timer runs out. That is a different game from the one
-this repo is learning.
+The entries whose cards we read at 0.82 to 0.87 s are not learned gaits: they replay action
+sequences searched against the five official seeds and tumble over the line before the 0.3 s
+fall timer runs out. That is a different game from the one this repo is learning.
