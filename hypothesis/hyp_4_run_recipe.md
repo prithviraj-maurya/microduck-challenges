@@ -1,7 +1,7 @@
 # Hypothesis 4: pay for speed itself, and stop taxing it
 
-Status: **prepared, not launched.** The code is in the working tree, uncommitted, tested and
-smoke-tested. Nothing has been spent.
+Status: **run finished 2026-11-16, hypothesis supported.** Best checkpoint 2999: 1.232 s, 5/5
+(local). Not published or entered yet. See the run record at the end.
 
 ## What the first three hypotheses told us
 
@@ -141,16 +141,57 @@ at 1000.
 ## Run record
 
 ```text
-Experiment commit:
+Experiment commit: a204128
 Training seed: 2
-HF job ID / actual cost:
-Best checkpoint / command speed:
-Local score / finished seeds:
-Per-seed times:
-Curves at the best checkpoint: lane_speed_mean, lane_drift_abs_mean, fell_over, mean_action_acc
-Official Arena score / rank / policy URL:
-Conclusion:
+HF job ID / actual cost: 6afa3b8123985fb9cd83e501 / 8375 s on l4x1, about $1.86 at $0.80/hour
+Best checkpoint / command speed: 2999 / 0.85 m/s
+Local score / finished seeds: 1.232 s / 5 of 5
+Per-seed times: 1.20, 1.22, 1.22, 1.22, 1.30 s
+Official Arena score / rank / policy URL: not entered yet
+Conclusion: supported. Under 1.5 s from checkpoint 1500 on, and the best checkpoint is the last.
 ```
+
+Local Arena score per checkpoint:
+
+| Checkpoint | Score | Finished |
+|---:|---:|---:|
+| 500 | 2.964 s | 5/5 |
+| 800 | 2.020 s | 5/5 |
+| 1000 | 1.724 s | 5/5 |
+| 1500 | 1.444 s | 5/5 |
+| 2000 | 1.376 s | 5/5 |
+| 2400 | 1.268 s | 5/5 |
+| 2500 | 1.324 s | 5/5 |
+| 2600 | 11.068 s | 4/5 |
+| 2700 | 1.272 s | 5/5 |
+| 2800 | 1.280 s | 5/5 |
+| 2900 | 1.252 s | 5/5 |
+| 2999 | 1.232 s | 5/5 |
+
+Curves from the event file (training average over 4096 robots, with shoves):
+
+| Iteration | 500 | 1000 | 1500 | 2000 | 2500 | 2999 |
+|---|---:|---:|---:|---:|---:|---:|
+| `Metrics/lane_speed_mean` (m/s) | 0.33 | 0.79 | 0.94 | 1.00 | 1.10 | 1.15 |
+| `Episode_Reward/lane_progress` | 1.53 | 3.42 | 4.31 | 4.22 | 4.88 | 5.20 |
+| `Curriculum/action_rate_weight` | −0.2 | −0.3 | −0.3 | −0.3 | −0.3 | −0.3 |
+| `Episode_Metrics/mean_action_acc` | 1.37 | 0.89 | 0.89 | 0.93 | 0.91 | 0.92 |
+| `Episode_Reward/track_linear_velocity` | 0.61 | 0.53 | 0.55 | 0.47 | 0.53 | 0.52 |
+| `Metrics/lane_drift_abs_mean` (m/s) | 0.28 | 0.34 | 0.37 | 0.39 | 0.41 | 0.43 |
+| `Episode_Termination/fell_over` | 1.50 | 0.96 | 0.83 | 1.00 | 0.67 | 0.71 |
+
+What the curves say:
+
+- `lane_speed_mean` rose through the whole run and the Arena time fell with it. It is the first
+  training curve in this repo that moves with the score.
+- `mean_action_acc` stayed flat near 0.9 after the smoothness weight stopped at −0.3. In the
+  earlier runs it kept falling as the weight went to −1.0, and the duck slowed down.
+- Two predictions in the table above were wrong. `track_linear_velocity` did not rise toward
+  2.0; it stayed near 0.5. `lane_drift_abs_mean` rose instead of falling. Neither stopped the
+  Arena runs from finishing, so read both as "not the curve that matters here"; why they moved
+  that way is not examined.
+- `fell_over` stayed high and noisy, as warned. Checkpoint 2600 is the one place it showed in
+  the Arena (4 of 5 finished). Late checkpoints are not all safe: score each one.
 
 ## After this run
 
