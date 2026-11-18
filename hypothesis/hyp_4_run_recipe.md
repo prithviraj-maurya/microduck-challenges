@@ -1,7 +1,7 @@
 # Hypothesis 4: pay for speed itself, and stop taxing it
 
 Status: **run finished 2026-11-16, hypothesis supported.** Best checkpoint 2999: 1.232 s, 5/5
-(local). Not published or entered yet. See the run record at the end.
+(local); entered on the Arena 2026-11-17 at 1.229 s, 5/5. See the run record at the end.
 
 ## What the first three hypotheses told us
 
@@ -147,7 +147,9 @@ HF job ID / actual cost: 6afa3b8123985fb9cd83e501 / 8375 s on l4x1, about $1.86 
 Best checkpoint / command speed: 2999 / 0.85 m/s
 Local score / finished seeds: 1.232 s / 5 of 5
 Per-seed times: 1.20, 1.22, 1.22, 1.22, 1.30 s
-Official Arena score / rank / policy URL: not entered yet
+Official Arena score / policy URL: 1.229 s, 5/5 at 0.85 m/s (entered 2026-11-17)
+  https://huggingface.co/prithviraj-maurya/microduck-lx-seed2-cp2999
+  https://huggingface.co/spaces/pollen-robotics/microduck-arena#/r/01M7PQ9JXB63A1FMTZKBAG
 Conclusion: supported. Under 1.5 s from checkpoint 1500 on, and the best checkpoint is the last.
 ```
 
